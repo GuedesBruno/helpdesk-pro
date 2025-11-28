@@ -12,6 +12,12 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+console.log("Firebase Config Debug:", {
+  apiKey: firebaseConfig.apiKey ? "Defined" : "Missing",
+  authDomain: firebaseConfig.authDomain ? "Defined" : "Missing",
+  projectId: firebaseConfig.projectId ? "Defined" : "Missing",
+});
+
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
