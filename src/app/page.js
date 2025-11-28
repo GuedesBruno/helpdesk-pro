@@ -1,64 +1,119 @@
-import Image from "next/image";
+// src/app/page.js
+'use client';
 
-export default function Home() {
+import { useState, useEffect } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { Plus, LogOut, Download } from 'lucide-react';
+import AuthScreen from '@/components/AuthScreen';
+import TicketCard from '@/components/TicketCard';
+import TicketDetail from '@/components/TicketDetail';
+import NewTicketForm from '@/components/NewTicketForm';
+
+export default function HomePage() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [tickets, setTickets] = useState([]);
+  const [view, setView] = useState('list'); // 'list', 'detail', 'new'
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setTickets([]);
+      return;
+    }
+    setLoading(true);
+    const ticketsCollection = collection(db, 'tickets');
+    const q = currentUser.role === 'user'
+      ? query(ticketsCollection, where('createdBy.uid', '==', currentUser.uid), orderBy('createdAt', 'desc'))
+      : query(ticketsCollection, orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const ticketsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTickets(ticketsData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Erro ao buscar chamados:", error);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  const handleLogin = (user) => setCurrentUser(user);
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setView('list');
+    setSelectedTicket(null);
+  };
+  const handleSelectTicket = (ticket) => {
+    setSelectedTicket(ticket);
+    setView('detail');
+  };
+  const handleBackToList = () => {
+    setSelectedTicket(null);
+    setView('list');
+  };
+
+  const handleExportReport = () => {
+    if (currentUser?.role !== 'admin') return;
+    const headers = ['ID', 'Assunto', 'Status', 'Prioridade', 'Departamento', 'Criado por', 'Email Criador', 'Data Criação'];
+    const rows = tickets.map(t => [
+      t.id, `"${t.subject.replace(/"/g, '""')}"`, t.status, t.priority, t.department,
+      t.createdBy.name, t.createdBy.email,
+      t.createdAt?.toDate ? new Date(t.createdAt.toDate()).toLocaleString('pt-BR') : 'N/A'
+    ].join(','));
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", "relatorio_chamados.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (!currentUser) {
+    return <AuthScreen onLogin={handleLogin} />;
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex h-screen bg-slate-100">
+      <aside className="w-64 p-6 text-white bg-slate-800 flex flex-col justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">HelpDesk Pro</h1>
+          <div className="mt-8">
+            <p className="text-lg font-semibold">{currentUser.name}</p>
+            <p className="text-sm text-indigo-300">{currentUser.role}</p>
+          </div>
+          <nav className="mt-10">
+            <button onClick={() => setView('new')} className="w-full flex items-center gap-3 px-4 py-2 font-semibold text-white transition-colors bg-indigo-600 rounded-md hover:bg-indigo-700">
+              <Plus className="w-5 h-5" /> Novo Chamado
+            </button>
+            {currentUser.role === 'admin' && (
+              <button onClick={handleExportReport} className="w-full flex items-center gap-3 px-4 py-2 mt-4 font-semibold text-slate-800 transition-colors bg-slate-200 rounded-md hover:bg-slate-300">
+                <Download className="w-5 h-5" /> Exportar
+              </button>
+            )}
+          </nav>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 font-semibold text-white transition-colors bg-red-600 rounded-md hover:bg-red-700">
+          <LogOut className="w-5 h-5" /> Sair
+        </button>
+      </aside>
+
+      <main className="flex-1 p-8 overflow-y-auto">
+        {view === 'list' && (
+          <div>
+            <h2 className="mb-6 text-3xl font-bold text-slate-800">Meus Chamados</h2>
+            {loading ? <p>Carregando...</p> : (
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+                {tickets.map(ticket => <TicketCard key={ticket.id} ticket={ticket} onClick={() => handleSelectTicket(ticket)} />)}
+                {tickets.length === 0 && <p className="text-slate-600">Nenhum chamado encontrado.</p>}
+              </div>
+            )}
+          </div>
+        )}
+        {view === 'new' && <NewTicketForm user={currentUser} onTicketCreated={handleBackToList} />}
+        {view === 'detail' && selectedTicket && <TicketDetail ticket={selectedTicket} user={currentUser} onBack={handleBackToList} />}
       </main>
     </div>
   );
