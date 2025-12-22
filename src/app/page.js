@@ -170,14 +170,31 @@ export default function HomePage() {
       const startDate = start.toDate ? start.toDate() : new Date(start);
       const endDate = end.toDate ? end.toDate() : new Date(end);
       const hours = (endDate - startDate) / (1000 * 60 * 60);
+      // Prevent negative values
+      if (hours < 0) return 'N/A';
       return hours.toFixed(2) + 'h';
+    };
+
+    const formatDate = (timestamp) => {
+      if (!timestamp) return 'N/A';
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleDateString('pt-BR');
+    };
+
+    const formatTime = (timestamp) => {
+      if (!timestamp) return 'N/A';
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleTimeString('pt-BR');
     };
 
     // Headers
     const headers = [
       'ID', 'Assunto', 'Status', 'Prioridade', 'Departamento',
-      'Criado por', 'Email', 'Atendente', 'Data Criação',
-      'Data Início', 'Data Resolução', 'Tempo em Fila', 'Tempo de Resolução'
+      'Criado por', 'Email', 'Atendente',
+      'Data Criação', 'Hora Criação',
+      'Data Início', 'Hora Início',
+      'Data Resolução', 'Hora Resolução',
+      'Tempo em Fila', 'Tempo de Resolução'
     ];
 
     // Rows
@@ -193,9 +210,12 @@ export default function HomePage() {
         escapeCSV(t.createdBy?.name || 'N/A'),
         escapeCSV(t.createdBy?.email || 'N/A'),
         escapeCSV(t.assignedTo?.name || 'Não atribuído'),
-        escapeCSV(t.createdAt?.toDate ? new Date(t.createdAt.toDate()).toLocaleString('pt-BR') : 'N/A'),
-        escapeCSV(t.timeStarted?.toDate ? new Date(t.timeStarted.toDate()).toLocaleString('pt-BR') : 'N/A'),
-        escapeCSV(t.timeResolved?.toDate ? new Date(t.timeResolved.toDate()).toLocaleString('pt-BR') : 'N/A'),
+        escapeCSV(formatDate(t.createdAt)),
+        escapeCSV(formatTime(t.createdAt)),
+        escapeCSV(formatDate(t.timeStarted)),
+        escapeCSV(formatTime(t.timeStarted)),
+        escapeCSV(formatDate(t.timeResolved)),
+        escapeCSV(formatTime(t.timeResolved)),
         escapeCSV(calculateHours(t.createdAt, t.timeStarted)),
         escapeCSV(calculateHours(t.timeStarted, t.timeResolved))
       ].join(',');
