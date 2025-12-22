@@ -26,14 +26,14 @@ export async function POST(request) {
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: #002554; padding: 20px; text-align: center;">
-          <h1 style="color: white; margin: 0;">Helpdesk Teca</h1>
+          <h1 style="color: white; margin: 0;">Helpdesk Tecassistiva</h1>
         </div>
         
         <div style="padding: 30px; background: #f9fafb;">
           <h2 style="color: #002554; margin-top: 0;">Você foi convidado!</h2>
           
           <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-            Você foi convidado para fazer parte do Helpdesk Teca como <strong>${roleLabels[role]}</strong>.
+            Você foi convidado para fazer parte do Helpdesk Tecassistiva como <strong>${roleLabels[role]}</strong>.
           </p>
           
           <p style="color: #374151; font-size: 16px; line-height: 1.6;">
@@ -59,19 +59,19 @@ export async function POST(request) {
         
         <div style="background: #e5e7eb; padding: 20px; text-align: center;">
           <p style="color: #6b7280; font-size: 12px; margin: 0;">
-            © ${new Date().getFullYear()} Helpdesk Teca - TecAssistiva
+            © ${new Date().getFullYear()} Helpdesk Tecassistiva - TecAssistiva
           </p>
         </div>
       </div>
     `;
 
     // Usar email do .env ou fallback para onboarding@resend.dev
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Teca <onboarding@resend.dev>';
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <onboarding@resend.dev>';
 
     const data = await resend.emails.send({
       from: fromEmail,
       to: [email],
-      subject: 'Convite para Helpdesk Teca',
+      subject: 'Convite para Helpdesk Tecassistiva',
       html: emailHtml,
     });
 

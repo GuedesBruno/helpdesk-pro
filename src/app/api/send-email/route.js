@@ -20,7 +20,7 @@ export async function POST(request) {
     const emailHtml = html || generateEmailTemplate(type, ticketData);
 
     // Usar email do .env ou fallback
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Teca <onboarding@resend.dev>';
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <onboarding@resend.dev>';
 
     // Enviar email
     const data = await resend.emails.send({
@@ -157,5 +157,5 @@ function generateEmailTemplate(type, data) {
     `,
   };
 
-  return templates[type] || `<p>${data.message || 'Notificação do Helpdesk Teca'}</p>`;
+  return templates[type] || `<p>${data.message || 'Notificação do Helpdesk Tecassistiva'}</p>`;
 }

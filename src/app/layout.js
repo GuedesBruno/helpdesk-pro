@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Helpdesk Teca",
+  title: "Helpdesk Tecassistiva",
   description: "Sistema de gerenciamento de chamados - TecAssistiva",
   icons: {
     icon: '/favicon.ico',

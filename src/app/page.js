@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { db, auth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { Plus, LogOut, Download, Loader2, Users, Building2 } from 'lucide-react';
+import { Plus, LogOut, Download, Loader2, Users, Building2, Menu, X } from 'lucide-react';
 import AuthScreen from '@/components/AuthScreen';
 import TicketCard from '@/components/TicketCard';
 import TicketDetail from '@/components/TicketDetail';
@@ -21,6 +21,7 @@ export default function HomePage() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Helper function to retry Firestore operations
   const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
@@ -36,64 +37,69 @@ export default function HomePage() {
   };
 
   useEffect(() => {
+    let unsubscribeUser = null;
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // User is signed in, fetch additional details (role) from Firestore
+        // User is signed in, listen to user document changes in real-time
         try {
           const userDocRef = doc(db, 'users', user.uid);
 
-          // Retry getDoc operation up to 3 times
-          const userDoc = await retryOperation(async () => {
-            return await getDoc(userDocRef);
+          // Use onSnapshot for real-time updates
+          unsubscribeUser = onSnapshot(userDocRef, (userDoc) => {
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              setCurrentUser({
+                uid: user.uid,
+                email: user.email,
+                name: userData.name || user.displayName || 'Usuário',
+                role: userData.role || 'user',
+                isOnline: userData.isOnline,
+                department: userData.department,
+                departmentName: userData.departmentName,
+              });
+            } else {
+              // User doc doesn't exist, create it
+              console.warn("User document not found, creating default profile");
+              const defaultUserData = {
+                uid: user.uid,
+                name: user.displayName || 'Usuário',
+                email: user.email,
+                role: 'colaborador',
+                isOnline: false,
+                createdAt: new Date().toISOString()
+              };
+
+              setDoc(userDocRef, defaultUserData);
+
+              setCurrentUser({
+                uid: user.uid,
+                email: user.email,
+                name: user.displayName || 'Usuário',
+                role: 'colaborador',
+                isOnline: false,
+              });
+            }
+            setAuthLoading(false);
+          }, (error) => {
+            console.error("Error listening to user document:", error);
+            setAuthLoading(false);
           });
-
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setCurrentUser({
-              uid: user.uid,
-              email: user.email,
-              name: userData.name || user.displayName || 'Usuário',
-              role: userData.role || 'user'
-            });
-          } else {
-            // User doc doesn't exist, create it
-            console.warn("User document not found, creating default profile");
-            const defaultUserData = {
-              uid: user.uid,
-              name: user.displayName || 'Usuário',
-              email: user.email,
-              role: 'colaborador',
-              createdAt: new Date().toISOString()
-            };
-
-            await setDoc(userDocRef, defaultUserData);
-
-            setCurrentUser({
-              uid: user.uid,
-              email: user.email,
-              name: user.displayName || 'Usuário',
-              role: 'colaborador'
-            });
-          }
         } catch (error) {
-          console.error("Error fetching user details:", error);
-
-          // Fallback: use auth data only
-          setCurrentUser({
-            uid: user.uid,
-            email: user.email,
-            name: user.displayName || 'Usuário',
-            role: 'colaborador'
-          });
+          console.error("Error setting up user listener:", error);
+          setAuthLoading(false);
         }
       } else {
         setCurrentUser(null);
         setTickets([]);
+        setAuthLoading(false);
       }
-      setAuthLoading(false);
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeUser) unsubscribeUser();
+    };
   }, []);
 
   useEffect(() => {
@@ -142,16 +148,59 @@ export default function HomePage() {
 
   const handleExportReport = () => {
     if (currentUser?.role !== 'admin') return;
-    const headers = ['ID', 'Assunto', 'Status', 'Prioridade', 'Departamento', 'Criado por', 'Email Criador', 'Data Criação'];
+
+    // Helper functions
+    const getStatusLabel = (status) => {
+      const labels = { queue: 'Em Fila', started: 'Iniciado', analyzing: 'Em Análise', waiting_user: 'Aguardando Retorno', resolved: 'Resolvido', canceled: 'Cancelado' };
+      return labels[status] || status;
+    };
+
+    const getPriorityLabel = (priority) => {
+      const labels = { low: 'Baixa', medium: 'Média', high: 'Alta', urgent: 'Urgente' };
+      return labels[priority] || priority;
+    };
+
+    const getDepartmentLabel = (dept) => {
+      const labels = { support: 'Suporte Técnico', financial: 'Financeiro', hr: 'Recursos Humanos' };
+      return labels[dept] || dept;
+    };
+
+    const calculateHours = (start, end) => {
+      if (!start || !end) return 'N/A';
+      const startDate = start.toDate ? start.toDate() : new Date(start);
+      const endDate = end.toDate ? end.toDate() : new Date(end);
+      const hours = (endDate - startDate) / (1000 * 60 * 60);
+      return hours.toFixed(2) + 'h';
+    };
+
+    // Headers
+    const headers = [
+      'ID', 'Assunto', 'Status', 'Prioridade', 'Departamento',
+      'Criado por', 'Email', 'Atendente', 'Data Criação',
+      'Data Início', 'Data Resolução', 'Tempo em Fila', 'Tempo de Resolução'
+    ];
+
+    // Rows
     const rows = tickets.map(t => [
-      t.id, `"${t.subject.replace(/"/g, '""')}"`, t.status, t.priority, t.department,
-      t.createdBy.name, t.createdBy.email,
-      t.createdAt?.toDate ? new Date(t.createdAt.toDate()).toLocaleString('pt-BR') : 'N/A'
+      t.id,
+      `"${t.subject.replace(/"/g, '""')}"`,
+      getStatusLabel(t.status),
+      getPriorityLabel(t.priority),
+      getDepartmentLabel(t.department),
+      t.createdBy?.name || 'N/A',
+      t.createdBy?.email || 'N/A',
+      t.assignedTo?.name || 'Não atribuído',
+      t.createdAt?.toDate ? new Date(t.createdAt.toDate()).toLocaleString('pt-BR') : 'N/A',
+      t.timeStarted?.toDate ? new Date(t.timeStarted.toDate()).toLocaleString('pt-BR') : 'N/A',
+      t.timeResolved?.toDate ? new Date(t.timeResolved.toDate()).toLocaleString('pt-BR') : 'N/A',
+      calculateHours(t.createdAt, t.timeStarted),
+      calculateHours(t.timeStarted, t.timeResolved)
     ].join(','));
+
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
     const link = document.createElement("a");
     link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", "relatorio_chamados.csv");
+    link.setAttribute("download", `relatorio_chamados_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -170,12 +219,35 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-100">
-      <aside className="w-64 p-6 text-white bg-tec-blue flex flex-col justify-between">
+    <div className="flex h-screen bg-slate-100 overflow-hidden">
+      {/* Hamburger Menu Button (Mobile) */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="fixed top-4 left-4 z-50 p-2 text-white bg-tec-blue rounded-md lg:hidden"
+      >
+        {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+      </button>
+
+      {/* Overlay (Mobile) */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black bg-opacity-50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed lg:static inset-y-0 left-0 z-40
+        w-64 p-6 text-white bg-tec-blue 
+        flex flex-col justify-between
+        transform transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
         <div>
           <div className="flex items-center gap-3 mb-8">
             <img src="/logo.png" alt="Teca Logo" className="w-10 h-10" />
-            <h1 className="text-2xl font-bold">Helpdesk Teca</h1>
+            <h1 className="text-2xl font-bold">Helpdesk Tecassistiva</h1>
           </div>
           <div className="mt-8">
             <div className="flex items-center justify-between gap-2 mb-1">

@@ -1,17 +1,33 @@
 // src/components/OnlineToggle.jsx
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { redistributeOrphanTickets } from '@/lib/queueDistribution';
 
 export default function OnlineToggle({ user }) {
-    const [isOnline, setIsOnline] = useState(user.isOnline || false);
+    const [isOnline, setIsOnline] = useState(false);
     const [updating, setUpdating] = useState(false);
+    const initializedRef = useRef(false);
 
+    // Sync with user.isOnline from Firestore
     useEffect(() => {
-        setIsOnline(user.isOnline || false);
-    }, [user.isOnline]);
+        console.log('OnlineToggle: user data changed', { uid: user?.uid, isOnline: user?.isOnline });
+
+        // Initialize isOnline if undefined (only once)
+        if (user && typeof user.isOnline === 'undefined' && !initializedRef.current) {
+            console.log('OnlineToggle: isOnline is undefined, initializing to false');
+            initializedRef.current = true;
+            const userRef = doc(db, 'users', user.uid);
+            updateDoc(userRef, { isOnline: false })
+                .then(() => console.log('OnlineToggle: Successfully initialized isOnline'))
+                .catch(err => console.error('Error initializing isOnline:', err));
+            setIsOnline(false);
+        } else if (user && typeof user.isOnline === 'boolean') {
+            console.log('OnlineToggle: Setting isOnline to', user.isOnline);
+            setIsOnline(user.isOnline);
+        }
+    }, [user?.uid, user?.isOnline]);
 
     const handleToggle = async () => {
         setUpdating(true);
