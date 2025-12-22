@@ -181,21 +181,25 @@ export default function HomePage() {
     ];
 
     // Rows
-    const rows = tickets.map(t => [
-      t.id,
-      `"${t.subject.replace(/"/g, '""')}"`,
-      getStatusLabel(t.status),
-      getPriorityLabel(t.priority),
-      getDepartmentLabel(t.department),
-      t.createdBy?.name || 'N/A',
-      t.createdBy?.email || 'N/A',
-      t.assignedTo?.name || 'Não atribuído',
-      t.createdAt?.toDate ? new Date(t.createdAt.toDate()).toLocaleString('pt-BR') : 'N/A',
-      t.timeStarted?.toDate ? new Date(t.timeStarted.toDate()).toLocaleString('pt-BR') : 'N/A',
-      t.timeResolved?.toDate ? new Date(t.timeResolved.toDate()).toLocaleString('pt-BR') : 'N/A',
-      calculateHours(t.createdAt, t.timeStarted),
-      calculateHours(t.timeStarted, t.timeResolved)
-    ].join(','));
+    const rows = tickets.map(t => {
+      const escapeCSV = (value) => `"${String(value || 'N/A').replace(/"/g, '""')}"`;
+
+      return [
+        escapeCSV(t.id),
+        escapeCSV(t.subject),
+        escapeCSV(getStatusLabel(t.status)),
+        escapeCSV(getPriorityLabel(t.priority)),
+        escapeCSV(getDepartmentLabel(t.department)),
+        escapeCSV(t.createdBy?.name || 'N/A'),
+        escapeCSV(t.createdBy?.email || 'N/A'),
+        escapeCSV(t.assignedTo?.name || 'Não atribuído'),
+        escapeCSV(t.createdAt?.toDate ? new Date(t.createdAt.toDate()).toLocaleString('pt-BR') : 'N/A'),
+        escapeCSV(t.timeStarted?.toDate ? new Date(t.timeStarted.toDate()).toLocaleString('pt-BR') : 'N/A'),
+        escapeCSV(t.timeResolved?.toDate ? new Date(t.timeResolved.toDate()).toLocaleString('pt-BR') : 'N/A'),
+        escapeCSV(calculateHours(t.createdAt, t.timeStarted)),
+        escapeCSV(calculateHours(t.timeStarted, t.timeResolved))
+      ].join(',');
+    });
 
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
     const link = document.createElement("a");
