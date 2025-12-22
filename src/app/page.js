@@ -173,7 +173,10 @@ export default function HomePage() {
     <div className="flex h-screen bg-slate-100">
       <aside className="w-64 p-6 text-white bg-tec-blue flex flex-col justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Helpdesk Teca</h1>
+          <div className="flex items-center gap-3 mb-8">
+            <img src="/logo.png" alt="Teca Logo" className="w-10 h-10" />
+            <h1 className="text-2xl font-bold">Helpdesk Teca</h1>
+          </div>
           <div className="mt-8">
             <div className="flex items-center justify-between gap-2 mb-1">
               <p className="text-lg font-semibold">{currentUser.name}</p>

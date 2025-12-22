@@ -15,7 +15,11 @@ export const metadata = {
   title: "Helpdesk Teca",
   description: "Sistema de gerenciamento de chamados - TecAssistiva",
   icons: {
-    icon: '/favicon.png',
+    icon: [
+      { url: '/favicon.png', sizes: 'any' },
+      { url: '/logo.png', sizes: 'any' },
+    ],
+    apple: '/logo.png',
   },
 };
 
