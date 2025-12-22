@@ -1,7 +1,7 @@
 // src/lib/firebase.js
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import { getFirestore, initializeFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -18,32 +18,28 @@ console.log("Firebase Config Debug:", {
   projectId: firebaseConfig.projectId ? "Defined" : "Missing",
 });
 
-// Initialize Firebase App
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase App (only once)
+let app;
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+
+  // Initialize Firestore with long polling BEFORE any other Firestore operations
+  // This is critical for Vercel/serverless environments
+  initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: true,
+  });
+
+  console.log("Firestore initialized with long polling for Vercel");
+} else {
+  app = getApp();
+}
 
 // Initialize Auth
 const auth = getAuth(app);
 
-// Initialize Firestore with settings optimized for Vercel/production
-let db;
-try {
-  if (!getApps().length || !getApps()[0]._firestoreInstance) {
-    // Use initializeFirestore with settings for better connection stability
-    db = initializeFirestore(app, {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-      }),
-      experimentalForceLongPolling: true, // Fix for Vercel/serverless environments
-      experimentalAutoDetectLongPolling: true,
-    });
-  } else {
-    db = getFirestore(app);
-  }
-} catch (error) {
-  // Fallback if initializeFirestore fails (already initialized)
-  console.warn("Firestore already initialized, using existing instance");
-  db = getFirestore(app);
-}
+// Get Firestore instance (already configured with long polling above)
+const db = getFirestore(app);
 
 const googleProvider = new GoogleAuthProvider();
 
