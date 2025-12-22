@@ -1,7 +1,7 @@
 // src/lib/firebase.js
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -18,9 +18,32 @@ console.log("Firebase Config Debug:", {
   projectId: firebaseConfig.projectId ? "Defined" : "Missing",
 });
 
+// Initialize Firebase App
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+// Initialize Auth
 const auth = getAuth(app);
-const db = getFirestore(app);
+
+// Initialize Firestore with settings optimized for Vercel/production
+let db;
+try {
+  if (!getApps().length || !getApps()[0]._firestoreInstance) {
+    // Use initializeFirestore with settings for better connection stability
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      }),
+      experimentalForceLongPolling: true, // Fix for Vercel/serverless environments
+      experimentalAutoDetectLongPolling: true,
+    });
+  } else {
+    db = getFirestore(app);
+  }
+} catch (error) {
+  // Fallback if initializeFirestore fails (already initialized)
+  console.warn("Firestore already initialized, using existing instance");
+  db = getFirestore(app);
+}
 
 const googleProvider = new GoogleAuthProvider();
 
