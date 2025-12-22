@@ -27,7 +27,6 @@ if (!getApps().length) {
   // This is critical for Vercel/serverless environments
   initializeFirestore(app, {
     experimentalForceLongPolling: true,
-    experimentalAutoDetectLongPolling: true,
   });
 
   console.log("Firestore initialized with long polling for Vercel");
