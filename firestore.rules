@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+    
+    function isAtendente() {
+      return isAuthenticated() && getUserRole() == 'atendente';
+    }
+    
+    function isColaborador() {
+      return isAuthenticated() && getUserRole() == 'colaborador';
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles
+      allow read: if isAuthenticated();
+      
+      // Users can create/update their own profile
+      // Admins can create/update any user profile
+      allow create: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isAdmin()
+      );
+      
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isAdmin() ||
+        // Atendentes podem atualizar próprio isOnline
+        (request.auth.uid == userId && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isOnline', 'lastOnlineAt']))
+      );
+      
+      // Only admin can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Invites collection
+    match /invites/{inviteId} {
+      // Anyone can read to validate invite tokens
+      allow read: if true;
+      
+      // Only admins can create invites
+      allow create: if isAdmin();
+      
+      // Anyone can update to mark as accepted (during registration)
+      allow update: if true;
+      
+      // Only admins can delete invites
+      allow delete: if isAdmin();
+    }
+    
+    // Departments collection
+    match /departments/{departmentId} {
+      // All authenticated users can read departments
+      allow read: if isAuthenticated();
+      
+      // Only admins can create, update, or delete departments
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Tickets collection
+    match /tickets/{ticketId} {
+      // Read permissions:
+      // - Admin and Atendente can read all tickets
+      // - Colaborador can only read their own tickets
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        isAtendente() ||
+        (isColaborador() && resource.data.createdBy.uid == request.auth.uid)
+      );
+      
+      // Create permissions: All authenticated users can create tickets
+      allow create: if isAuthenticated();
+      
+      // Update permissions:
+      // - Admin and Atendente can update any ticket
+      // - Colaborador can only update their own tickets AND cannot change status
+      //   EXCEPT: Can change from waiting_user to analyzing (when responding)
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        isAtendente() ||
+        (isColaborador() && 
+         resource.data.createdBy.uid == request.auth.uid && (
+           request.resource.data.status == resource.data.status ||  // Status unchanged
+           (resource.data.status == 'waiting_user' && request.resource.data.status == 'analyzing')  // Responding to request
+         ))
+      );
+      
+      // Delete permissions: 
+      // - Admin can delete any ticket
+      // - Colaborador can delete their own tickets
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        (isColaborador() && resource.data.createdBy.uid == request.auth.uid)
+      );
+      
+      // Comments subcollection
+      match /comments/{commentId} {
+        // Anyone authenticated can read comments
+        allow read: if isAuthenticated();
+        
+        // Anyone authenticated can create comments
+        allow create: if isAuthenticated();
+        
+        // Users can update/delete their own comments
+        allow update, delete: if isAuthenticated() && 
+          resource.data.author.uid == request.auth.uid;
+      }
+    }
+  }
+}

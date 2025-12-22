@@ -2,7 +2,17 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #000000;
+  
+  /* TecAssistiva Brand Colors */
+  --tec-blue: #002554;
+  --tec-blue-dark: #001a3d;
+  --tec-blue-light: #003d7a;
+  --tec-gray-dark: #2d2d2d;
+  --tec-gray: #6b7280;
+  --tec-gray-light: #e5e7eb;
+  --tec-warning: #f59e0b;
+  --tec-danger: #dc2626;
 }
 
 @theme inline {
@@ -10,13 +20,16 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  
+  /* TecAssistiva Custom Colors */
+  --color-tec-blue: var(--tec-blue);
+  --color-tec-blue-dark: var(--tec-blue-dark);
+  --color-tec-blue-light: var(--tec-blue-light);
+  --color-tec-gray-dark: var(--tec-gray-dark);
+  --color-tec-gray: var(--tec-gray);
+  --color-tec-gray-light: var(--tec-gray-light);
+  --color-tec-warning: var(--tec-warning);
+  --color-tec-danger: var(--tec-danger);
 }
 
 body {

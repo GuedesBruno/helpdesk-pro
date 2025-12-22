@@ -3,21 +3,37 @@
 
 import { useState, useEffect } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { Plus, LogOut, Download, Loader2 } from 'lucide-react';
+import { Plus, LogOut, Download, Loader2, Users, Building2 } from 'lucide-react';
 import AuthScreen from '@/components/AuthScreen';
 import TicketCard from '@/components/TicketCard';
 import TicketDetail from '@/components/TicketDetail';
 import NewTicketForm from '@/components/NewTicketForm';
+import UserManagement from '@/components/UserManagement';
+import DepartmentManagement from '@/components/DepartmentManagement';
+import OnlineToggle from '@/components/OnlineToggle';
 
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [tickets, setTickets] = useState([]);
-  const [view, setView] = useState('list'); // 'list', 'detail', 'new'
+  const [view, setView] = useState('list'); // 'list', 'detail', 'new', 'users', 'departments'
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
+
+  // Helper function to retry Firestore operations
+  const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (i === maxRetries - 1) throw error;
+        console.warn(`Retry ${i + 1}/${maxRetries} after error:`, error.message);
+        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+      }
+    }
+  };
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
@@ -25,7 +41,11 @@ export default function HomePage() {
         // User is signed in, fetch additional details (role) from Firestore
         try {
           const userDocRef = doc(db, 'users', user.uid);
-          const userDoc = await getDoc(userDocRef);
+
+          // Retry getDoc operation up to 3 times
+          const userDoc = await retryOperation(async () => {
+            return await getDoc(userDocRef);
+          });
 
           if (userDoc.exists()) {
             const userData = userDoc.data();
@@ -36,16 +56,35 @@ export default function HomePage() {
               role: userData.role || 'user'
             });
           } else {
-            // Fallback if user doc doesn't exist (shouldn't happen with new signup flow)
+            // User doc doesn't exist, create it
+            console.warn("User document not found, creating default profile");
+            const defaultUserData = {
+              uid: user.uid,
+              name: user.displayName || 'Usuário',
+              email: user.email,
+              role: 'colaborador',
+              createdAt: new Date().toISOString()
+            };
+
+            await setDoc(userDocRef, defaultUserData);
+
             setCurrentUser({
               uid: user.uid,
               email: user.email,
               name: user.displayName || 'Usuário',
-              role: 'user'
+              role: 'colaborador'
             });
           }
         } catch (error) {
           console.error("Error fetching user details:", error);
+
+          // Fallback: use auth data only
+          setCurrentUser({
+            uid: user.uid,
+            email: user.email,
+            name: user.displayName || 'Usuário',
+            role: 'colaborador'
+          });
         }
       } else {
         setCurrentUser(null);
@@ -63,8 +102,9 @@ export default function HomePage() {
     setLoading(true);
     const ticketsCollection = collection(db, 'tickets');
 
-    // Admin sees all tickets, User sees only their own
-    const q = currentUser.role === 'user'
+    // Colaborador sees only their own tickets
+    // Admin and Atendente see all tickets
+    const q = currentUser.role === 'colaborador'
       ? query(ticketsCollection, where('createdBy.uid', '==', currentUser.uid), orderBy('createdAt', 'desc'))
       : query(ticketsCollection, orderBy('createdAt', 'desc'));
 
@@ -120,7 +160,7 @@ export default function HomePage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-100">
-        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
+        <Loader2 className="w-10 h-10 text-tec-blue animate-spin" />
       </div>
     );
   }
@@ -131,25 +171,53 @@ export default function HomePage() {
 
   return (
     <div className="flex h-screen bg-slate-100">
-      <aside className="w-64 p-6 text-white bg-slate-800 flex flex-col justify-between">
+      <aside className="w-64 p-6 text-white bg-tec-blue flex flex-col justify-between">
         <div>
-          <h1 className="text-2xl font-bold">HelpDesk Pro</h1>
+          <h1 className="text-2xl font-bold">Helpdesk Teca</h1>
           <div className="mt-8">
-            <p className="text-lg font-semibold">{currentUser.name}</p>
-            <p className="text-sm text-indigo-300 capitalize">{currentUser.role === 'admin' ? 'Administrador' : 'Colaborador'}</p>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <p className="text-lg font-semibold">{currentUser.name}</p>
+              {(currentUser.role === 'atendente' || currentUser.role === 'admin') && (
+                <OnlineToggle user={currentUser} />
+              )}
+            </div>
+            <p className="text-sm text-indigo-300 capitalize">
+              {currentUser.role === 'admin' ? 'Administrador' :
+                currentUser.role === 'atendente' ? 'Atendente' : 'Colaborador'}
+            </p>
           </div>
+
           <nav className="mt-10">
-            <button onClick={() => setView('new')} className="w-full flex items-center gap-3 px-4 py-2 font-semibold text-white transition-colors bg-indigo-600 rounded-md hover:bg-indigo-700">
-              <Plus className="w-5 h-5" /> Novo Chamado
-            </button>
-            {currentUser.role === 'admin' && (
-              <button onClick={handleExportReport} className="w-full flex items-center gap-3 px-4 py-2 mt-4 font-semibold text-slate-800 transition-colors bg-slate-200 rounded-md hover:bg-slate-300">
-                <Download className="w-5 h-5" /> Exportar
+            {/* Colaborador vê "Novo Chamado" */}
+            {currentUser.role === 'colaborador' && (
+              <button onClick={() => setView('new')} className="w-full flex items-center gap-3 px-4 py-2 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
+                <Plus className="w-5 h-5" /> Novo Chamado
               </button>
+            )}
+
+            {/* Admin e Atendente veem "Fila" */}
+            {(currentUser.role === 'admin' || currentUser.role === 'atendente') && (
+              <button onClick={() => setView('list')} className="w-full flex items-center gap-3 px-4 py-2 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
+                <Users className="w-5 h-5" /> Fila
+              </button>
+            )}
+
+            {currentUser.role === 'admin' && (
+              <>
+                <button onClick={handleExportReport} className="w-full flex items-center gap-3 px-4 py-2 mt-4 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
+                  <Download className="w-5 h-5" /> Exportar
+                </button>
+                <button onClick={() => setView('users')} className="w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
+                  <Users className="w-5 h-5" /> Usuários
+                </button>
+                <button onClick={() => setView('departments')} className="w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
+                  <Building2 className="w-5 h-5" /> Departamentos
+                </button>
+              </>
             )}
           </nav>
         </div>
-        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 font-semibold text-white transition-colors bg-red-600 rounded-md hover:bg-red-700">
+        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 font-semibold text-white transition-colors bg-tec-danger rounded-md hover:bg-red-700">
           <LogOut className="w-5 h-5" /> Sair
         </button>
       </aside>
@@ -160,7 +228,7 @@ export default function HomePage() {
             <h2 className="mb-6 text-3xl font-bold text-slate-800">Meus Chamados</h2>
             {loading ? (
               <div className="flex justify-center mt-10">
-                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                <Loader2 className="w-8 h-8 text-tec-blue animate-spin" />
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -172,6 +240,8 @@ export default function HomePage() {
         )}
         {view === 'new' && <NewTicketForm user={currentUser} onTicketCreated={handleBackToList} />}
         {view === 'detail' && selectedTicket && <TicketDetail ticket={selectedTicket} user={currentUser} onBack={handleBackToList} />}
+        {view === 'users' && <UserManagement onBack={handleBackToList} />}
+        {view === 'departments' && <DepartmentManagement onBack={handleBackToList} />}
       </main>
     </div>
   );

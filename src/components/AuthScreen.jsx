@@ -136,7 +136,7 @@ export default function AuthScreen() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 font-semibold text-white transition-colors bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 font-semibold text-white transition-colors bg-tec-blue rounded-md hover:bg-tec-blue-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tec-blue disabled:opacity-50"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Enviar Email'}
             </button>
@@ -155,7 +155,7 @@ export default function AuthScreen() {
     <div className="flex items-center justify-center min-h-screen bg-slate-100">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-lg">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-slate-800">HelpDesk Pro</h1>
+          <h1 className="text-3xl font-bold text-slate-800">Helpdesk Teca</h1>
           <p className="mt-2 text-slate-600">
             {isLogin ? 'Faça login para continuar' : 'Crie sua conta'}
           </p>
@@ -244,7 +244,7 @@ export default function AuthScreen() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 font-semibold text-white transition-colors bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 font-semibold text-white transition-colors bg-tec-blue rounded-md hover:bg-tec-blue-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tec-blue disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isLogin ? <LogIn className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />)}
             {isLogin ? 'Entrar' : 'Cadastrar'}
