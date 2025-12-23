@@ -109,24 +109,25 @@ export default function HomePage() {
     setLoading(true);
     const ticketsCollection = collection(db, 'tickets');
 
-    // Colaborador sees only their own tickets (excluding resolved/canceled)
-    // Admin and Atendente see all tickets (excluding resolved/canceled)
+    // Fetch all tickets and filter on client side to avoid complex indexes
     const q = currentUser.role === 'colaborador'
       ? query(
         ticketsCollection,
         where('createdBy.uid', '==', currentUser.uid),
-        where('status', 'in', ['queue', 'started', 'analyzing', 'waiting_user']),
         orderBy('createdAt', 'desc')
       )
       : query(
         ticketsCollection,
-        where('status', 'in', ['queue', 'started', 'analyzing', 'waiting_user']),
         orderBy('createdAt', 'desc')
       );
 
     const unsubscribeTickets = onSnapshot(q, (snapshot) => {
-      const ticketsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setTickets(ticketsData);
+      const allTickets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Filter out resolved and canceled tickets on client side
+      const activeTickets = allTickets.filter(t =>
+        t.status !== 'resolved' && t.status !== 'canceled'
+      );
+      setTickets(activeTickets);
       setLoading(false);
     }, (error) => {
       console.error("Erro ao buscar chamados:", error);
