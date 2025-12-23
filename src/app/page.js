@@ -3,9 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { Plus, LogOut, Download, Loader2, Users, Building2, Menu, X } from 'lucide-react';
+import { Plus, LogOut, Download, Loader2, Users, Building2, Menu, X, CheckCircle } from 'lucide-react';
 import AuthScreen from '@/components/AuthScreen';
 import TicketCard from '@/components/TicketCard';
 import TicketDetail from '@/components/TicketDetail';
@@ -17,7 +17,8 @@ import OnlineToggle from '@/components/OnlineToggle';
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [tickets, setTickets] = useState([]);
-  const [view, setView] = useState('list'); // 'list', 'detail', 'new', 'users', 'departments'
+  const [resolvedTickets, setResolvedTickets] = useState([]);
+  const [view, setView] = useState('list'); // 'list', 'detail', 'new', 'users', 'departments', 'resolved'
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
@@ -126,8 +127,62 @@ export default function HomePage() {
     return () => unsubscribeTickets();
   }, [currentUser]);
 
+  // Auto-offline when closing browser/tab
+  useEffect(() => {
+    if (!currentUser || (currentUser.role !== 'atendente' && currentUser.role !== 'admin')) return;
+
+    const handleBeforeUnload = async () => {
+      const userRef = doc(db, 'users', currentUser.uid);
+      await updateDoc(userRef, {
+        isOnline: false,
+        lastOnlineAt: new Date()
+      });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [currentUser]);
+
+  // Load resolved tickets
+  useEffect(() => {
+    if (!currentUser || view !== 'resolved') return;
+
+    const ticketsCollection = collection(db, 'tickets');
+
+    // Admin sees all resolved tickets, Atendente sees only their own
+    const q = currentUser.role === 'admin'
+      ? query(
+        ticketsCollection,
+        where('status', '==', 'resolved'),
+        orderBy('timeResolved', 'desc')
+      )
+      : query(
+        ticketsCollection,
+        where('status', '==', 'resolved'),
+        where('assignedTo.uid', '==', currentUser.uid),
+        orderBy('timeResolved', 'desc')
+      );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const resolved = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setResolvedTickets(resolved);
+    }, (error) => {
+      console.error("Erro ao buscar chamados resolvidos:", error);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, view]);
+
   const handleLogout = async () => {
     try {
+      // Set user offline before logout
+      if (currentUser && (currentUser.role === 'atendente' || currentUser.role === 'admin')) {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, {
+          isOnline: false,
+          lastOnlineAt: new Date()
+        });
+      }
       await signOut(auth);
       setView('list');
       setSelectedTicket(null);
@@ -296,9 +351,14 @@ export default function HomePage() {
 
             {/* Admin e Atendente veem "Fila" */}
             {(currentUser.role === 'admin' || currentUser.role === 'atendente') && (
-              <button onClick={() => setView('list')} className="w-full flex items-center gap-3 px-4 py-2 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
-                <Users className="w-5 h-5" /> Fila
-              </button>
+              <>
+                <button onClick={() => setView('list')} className="w-full flex items-center gap-3 px-4 py-2 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
+                  <Users className="w-5 h-5" /> Fila
+                </button>
+                <button onClick={() => setView('resolved')} className="w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
+                  <CheckCircle className="w-5 h-5" /> Chamados Resolvidos
+                </button>
+              </>
             )}
 
             {currentUser.role === 'admin' && (
@@ -333,6 +393,24 @@ export default function HomePage() {
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {tickets.map(ticket => <TicketCard key={ticket.id} ticket={ticket} onClick={() => handleSelectTicket(ticket)} />)}
                 {tickets.length === 0 && <p className="text-slate-600">Nenhum chamado encontrado.</p>}
+              </div>
+            )}
+          </div>
+        )}
+        {view === 'resolved' && (
+          <div>
+            <h2 className="mb-6 text-3xl font-bold text-slate-800">Chamados Resolvidos</h2>
+            {resolvedTickets.length === 0 ? (
+              <p className="text-slate-600">Nenhum chamado resolvido ainda.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+                {resolvedTickets.map(ticket => (
+                  <TicketCard
+                    key={ticket.id}
+                    ticket={ticket}
+                    onClick={() => handleSelectTicket(ticket)}
+                  />
+                ))}
               </div>
             )}
           </div>
