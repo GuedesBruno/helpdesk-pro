@@ -312,8 +312,8 @@ export default function TicketDetail({ ticket, user, onBack }) {
           </div>
         </div>
 
-        {/* Botões de Ação para Atendentes */}
-        {canChangeStatus && isAssignedAttendant && (
+        {/* Botões de Ação para Atendentes e Admin */}
+        {canChangeStatus && (isAssignedAttendant || (user.role === 'admin' && !ticket.assignedTo)) && (
           <div className="flex flex-wrap gap-2">
             {status === 'queue' && (
               <button onClick={handleStartTicket} className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700">

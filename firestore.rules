@@ -25,26 +25,25 @@ service cloud.firestore {
     
     // Users collection
     match /users/{userId} {
-      // Anyone authenticated can read user profiles
-      allow read: if isAuthenticated();
+      // Anyone authenticated can read any user profile (needed for real-time listeners)
+      // This is safe because user profiles don't contain sensitive data
+      allow read: if request.auth != null;
       
-      // Users can create/update their own profile
-      // Admins can create/update any user profile
-      allow create: if isAuthenticated() && (
+      // Users can create their own profile, admins can create any profile
+      allow create: if request.auth != null && (
         request.auth.uid == userId ||
-        isAdmin()
+        request.auth.uid in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
       
-      allow update: if isAuthenticated() && (
+      // Users can update their own profile, admins can update any profile
+      allow update: if request.auth != null && (
         request.auth.uid == userId ||
-        isAdmin() ||
-        // Atendentes podem atualizar próprio isOnline
-        (request.auth.uid == userId && 
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isOnline', 'lastOnlineAt']))
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
       
       // Only admin can delete users
-      allow delete: if isAdmin();
+      allow delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
     // Invites collection

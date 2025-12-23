@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { Plus, LogOut, Download, Loader2, Users, Building2, Menu, X, CheckCircle } from 'lucide-react';
 import AuthScreen from '@/components/AuthScreen';
@@ -23,6 +23,9 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportDateFrom, setExportDateFrom] = useState('');
+  const [exportDateTo, setExportDateTo] = useState('');
 
   // Helper function to retry Firestore operations
   const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
@@ -137,22 +140,6 @@ export default function HomePage() {
     return () => unsubscribeTickets();
   }, [currentUser]);
 
-  // Auto-offline when closing browser/tab
-  useEffect(() => {
-    if (!currentUser || (currentUser.role !== 'atendente' && currentUser.role !== 'admin')) return;
-
-    const handleBeforeUnload = async () => {
-      const userRef = doc(db, 'users', currentUser.uid);
-      await updateDoc(userRef, {
-        isOnline: false,
-        lastOnlineAt: new Date()
-      });
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [currentUser]);
-
   // Load resolved tickets
   useEffect(() => {
     if (!currentUser || view !== 'resolved') return;
@@ -211,7 +198,7 @@ export default function HomePage() {
     setView('list');
   };
 
-  const handleExportReport = () => {
+  const handleExportReport = async (dateFrom = '', dateTo = '') => {
     if (currentUser?.role !== 'admin') return;
 
     // Helper functions
@@ -252,6 +239,48 @@ export default function HomePage() {
       return date.toLocaleTimeString('pt-BR');
     };
 
+    // Fetch ALL tickets from Firestore (not just the filtered state)
+    const ticketsCollection = collection(db, 'tickets');
+    const allTicketsQuery = query(ticketsCollection, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(allTicketsQuery);
+    const allTickets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Filter tickets by date range
+    let filteredTickets = allTickets;
+    if (dateFrom || dateTo) {
+      filteredTickets = allTickets.filter(t => {
+        if (!t.createdAt) return false;
+
+        // Convert Firestore timestamp to Date
+        let ticketDate;
+        if (t.createdAt.toDate) {
+          ticketDate = t.createdAt.toDate();
+        } else if (t.createdAt.seconds) {
+          ticketDate = new Date(t.createdAt.seconds * 1000);
+        } else {
+          ticketDate = new Date(t.createdAt);
+        }
+
+        if (dateFrom) {
+          const fromDate = new Date(dateFrom + 'T00:00:00');
+          if (ticketDate < fromDate) return false;
+        }
+
+        if (dateTo) {
+          const toDate = new Date(dateTo + 'T23:59:59');
+          if (ticketDate > toDate) return false;
+        }
+
+        return true;
+      });
+    }
+
+    // Check if there are tickets to export
+    if (filteredTickets.length === 0) {
+      alert('Nenhum chamado encontrado no período selecionado.');
+      return;
+    }
+
     // Headers
     const headers = [
       'ID', 'Assunto', 'Status', 'Prioridade', 'Departamento',
@@ -263,7 +292,7 @@ export default function HomePage() {
     ];
 
     // Rows
-    const rows = tickets.map(t => {
+    const rows = filteredTickets.map(t => {
       const escapeCSV = (value) => `"${String(value || 'N/A').replace(/"/g, '""')}"`;
 
       return [
@@ -286,10 +315,23 @@ export default function HomePage() {
       ].join(',');
     });
 
+    // Generate filename with date range
+    let filename = 'relatorio_chamados';
+    if (dateFrom && dateTo) {
+      filename += `_${dateFrom}_a_${dateTo}`;
+    } else if (dateFrom) {
+      filename += `_desde_${dateFrom}`;
+    } else if (dateTo) {
+      filename += `_ate_${dateTo}`;
+    } else {
+      filename += `_${new Date().toISOString().split('T')[0]}`;
+    }
+    filename += '.csv';
+
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
     const link = document.createElement("a");
     link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", `relatorio_chamados_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -334,10 +376,17 @@ export default function HomePage() {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div>
-          <div className="flex items-center gap-3 mb-8">
+          <button
+            onClick={() => {
+              setView(currentUser.role === 'colaborador' ? 'new' : 'list');
+              setSelectedTicket(null);
+              setSidebarOpen(false);
+            }}
+            className="flex items-center gap-3 mb-8 w-full hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <img src="/logo.png" alt="Teca Logo" className="w-10 h-10" />
             <h1 className="text-2xl font-bold">Helpdesk Tecassistiva</h1>
-          </div>
+          </button>
           <div className="mt-8">
             <div className="flex items-center justify-between gap-2 mb-1">
               <p className="text-lg font-semibold">{currentUser.name}</p>
@@ -366,14 +415,14 @@ export default function HomePage() {
                   <Users className="w-5 h-5" /> Fila
                 </button>
                 <button onClick={() => setView('resolved')} className="w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
-                  <CheckCircle className="w-5 h-5" /> Chamados Resolvidos
+                  <CheckCircle className="w-5 h-5" /> Resolvidos
                 </button>
               </>
             )}
 
             {currentUser.role === 'admin' && (
               <>
-                <button onClick={handleExportReport} className="w-full flex items-center gap-3 px-4 py-2 mt-4 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
+                <button onClick={() => setShowExportModal(true)} className="w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
                   <Download className="w-5 h-5" /> Exportar
                 </button>
                 <button onClick={() => setView('users')} className="w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
@@ -430,6 +479,78 @@ export default function HomePage() {
         {view === 'users' && <UserManagement onBack={handleBackToList} />}
         {view === 'departments' && <DepartmentManagement onBack={handleBackToList} />}
       </main>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold text-slate-800 mb-4">Exportar Relatório</h2>
+            <p className="text-sm text-slate-600 mb-4">
+              Selecione o período para filtrar os chamados. Deixe em branco para exportar todos.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Data DE
+                </label>
+                <input
+                  type="date"
+                  value={exportDateFrom}
+                  onChange={(e) => setExportDateFrom(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-tec-blue"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Data ATÉ
+                </label>
+                <input
+                  type="date"
+                  value={exportDateTo}
+                  onChange={(e) => setExportDateTo(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-tec-blue"
+                />
+              </div>
+
+              {exportDateFrom && exportDateTo && new Date(exportDateFrom) > new Date(exportDateTo) && (
+                <p className="text-sm text-red-600">
+                  A data DE não pode ser maior que a data ATÉ
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowExportModal(false);
+                  setExportDateFrom('');
+                  setExportDateTo('');
+                }}
+                className="flex-1 px-4 py-2 text-slate-700 bg-slate-200 rounded-md hover:bg-slate-300 transition-colors font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  if (exportDateFrom && exportDateTo && new Date(exportDateFrom) > new Date(exportDateTo)) {
+                    alert('A data DE não pode ser maior que a data ATÉ');
+                    return;
+                  }
+                  handleExportReport(exportDateFrom, exportDateTo);
+                  setShowExportModal(false);
+                  setExportDateFrom('');
+                  setExportDateTo('');
+                }}
+                className="flex-1 px-4 py-2 text-white bg-tec-blue rounded-md hover:bg-blue-700 transition-colors font-semibold"
+              >
+                Exportar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
