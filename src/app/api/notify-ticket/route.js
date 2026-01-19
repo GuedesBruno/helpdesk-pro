@@ -167,11 +167,16 @@ export async function POST(request) {
     // Determinar destinatário baseado no tipo de ação e papel do usuário
     let recipientEmail = supportEmail;
 
+    console.log('🔍 [EMAIL API LOGIC] User Role:', user?.role);
+    console.log('🔍 [EMAIL API LOGIC] Action Type:', type);
+    console.log('🔍 [EMAIL API LOGIC] Ticket CreatedBy Email:', ticket.createdBy?.email);
+
     // Ações do ATENDENTE/ADMIN → Email para COLABORADOR
     if (user && (user.role === 'atendente' || user.role === 'admin')) {
       if (type === 'assigned' || type === 'status_change' || type === 'resolved') {
         // Atendente iniciou, mudou status ou resolveu → Email para colaborador
         recipientEmail = ticket.createdBy?.email || supportEmail;
+        console.log('🔍 [EMAIL API LOGIC] >> REGRA APLICADA: Atendente/Admin -> Colaborador');
       }
     }
 

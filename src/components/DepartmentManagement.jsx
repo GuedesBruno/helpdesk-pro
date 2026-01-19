@@ -10,6 +10,8 @@ export default function DepartmentManagement({ onBack }) {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingDept, setEditingDept] = useState(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deptToDelete, setDeptToDelete] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
         code: '',
@@ -106,19 +108,26 @@ export default function DepartmentManagement({ onBack }) {
         }
     };
 
-    const handleDelete = async (deptId) => {
-        if (!confirm('Tem certeza que deseja excluir este departamento?\n\nAtenção: Usuários e tickets deste departamento podem ser afetados.')) {
-            return;
-        }
+    const handleDeleteClick = (dept) => {
+        setDeptToDelete(dept);
+        setShowDeleteModal(true);
+    };
+
+    const handleDelete = async () => {
+        if (!deptToDelete) return;
 
         try {
-            const deptRef = doc(db, 'departments', deptId);
+            const deptRef = doc(db, 'departments', deptToDelete.id);
             await deleteDoc(deptRef);
             setSuccess('Departamento excluído com sucesso!');
+            setShowDeleteModal(false);
+            setDeptToDelete(null);
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
             console.error('Erro ao excluir departamento:', err);
             setError('Erro ao excluir departamento: ' + err.message);
+            setShowDeleteModal(false);
+            setDeptToDelete(null);
             setTimeout(() => setError(''), 3000);
         }
     };
@@ -215,7 +224,7 @@ export default function DepartmentManagement({ onBack }) {
                                 {dept.active ? 'Desativar' : 'Ativar'}
                             </button>
                             <button
-                                onClick={() => handleDelete(dept.id)}
+                                onClick={() => handleDeleteClick(dept)}
                                 className="flex items-center gap-1 px-3 py-1 text-sm text-red-700 bg-red-50 rounded hover:bg-red-100"
                             >
                                 <Trash2 className="w-4 h-4" />
@@ -302,6 +311,48 @@ export default function DepartmentManagement({ onBack }) {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Confirmação de Exclusão */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-red-600">⚠️ Confirmar Exclusão</h3>
+                            <button
+                                onClick={() => { setShowDeleteModal(false); setDeptToDelete(null); }}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="mb-6">
+                            <p className="mb-2 text-gray-700 font-medium">
+                                Tem certeza que deseja excluir o departamento <span className="font-bold text-slate-800">"{deptToDelete?.name}"</span>?
+                            </p>
+                            <p className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-100">
+                                <strong>Atenção:</strong> Usuários e chamaos vinculados a este departamento podem ser afetados. Esta ação não pode ser desfeita.
+                            </p>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => { setShowDeleteModal(false); setDeptToDelete(null); }}
+                                className="flex-1 px-4 py-2 text-gray-700 transition-colors bg-gray-200 rounded-md hover:bg-gray-300 font-semibold"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                className="flex items-center justify-center flex-1 gap-2 px-4 py-2 text-white transition-colors bg-red-600 rounded-md hover:bg-red-700 font-semibold"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Excluir Departamento
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

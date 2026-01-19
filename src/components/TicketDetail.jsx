@@ -91,21 +91,30 @@ export default function TicketDetail({ ticket, user, onBack }) {
 
       setStatus('started');
 
+      // Payload para notificação
+      const notificationPayload = {
+        type: 'assigned',
+        ticket: {
+          ...ticket,
+          id: ticket.id,
+          status: 'started',
+          assignedTo: { uid: user.uid, name: user.name, email: user.email }
+        },
+        user // Adicionar user para determinar destinatário
+      };
+
+      console.log('🚀 [FRONTEND] Preparando envio de email (assigned):', notificationPayload);
+
       // Enviar notificação por email
-      await fetch('/api/notify-ticket', {
+      const response = await fetch('/api/notify-ticket', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'assigned',
-          ticket: {
-            ...ticket,
-            id: ticket.id,
-            status: 'started',
-            assignedTo: { uid: user.uid, name: user.name, email: user.email }
-          },
-          user // Adicionar user para determinar destinatário
-        }),
+        body: JSON.stringify(notificationPayload),
       });
+
+      const result = await response.json();
+      console.log('🚀 [FRONTEND] Resposta da API de email:', result);
+
     } catch (error) {
       console.error('Erro ao iniciar atendimento:', error);
     }
@@ -253,7 +262,8 @@ export default function TicketDetail({ ticket, user, onBack }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'resolved',
-          ticket: { ...ticket, id: ticket.id, status: 'resolved', timeResolved: new Date() }
+          ticket: { ...ticket, id: ticket.id, status: 'resolved', timeResolved: new Date() },
+          user // Adicionar user para determinar destinatário
         }),
       });
     } catch (error) {
