@@ -46,8 +46,10 @@ export async function POST(request) {
       urgent: 'Urgente'
     };
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://helpdesk.tecassistiva.com.br';
+
     // Template base do email
-    const baseTemplate = (title, content) => `
+    const baseTemplate = (title, content, actionText = 'Acessar Helpdesk') => `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: #002554; padding: 20px; text-align: center;">
           <h1 style="color: white; margin: 0;">Helpdesk Tecassistiva</h1>
@@ -56,6 +58,12 @@ export async function POST(request) {
         <div style="padding: 30px; background: #f9fafb;">
           <h2 style="color: #002554; margin-top: 0;">${title}</h2>
           ${content}
+          
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="${appUrl}" style="background-color: #002554; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+              ${actionText}
+            </a>
+          </div>
         </div>
         
         <div style="background: #e5e7eb; padding: 20px; text-align: center;">
@@ -90,7 +98,7 @@ export async function POST(request) {
             <p style="margin: 0;"><strong>Descrição:</strong></p>
             <p style="margin: 10px 0 0 0;">${ticket.description || 'Sem descrição'}</p>
           </div>
-        `);
+        `, 'Acessar Chamado');
         break;
 
       case 'status_change':
@@ -106,7 +114,7 @@ export async function POST(request) {
             </p>
             ${user ? `<p style="margin: 10px 0 0 0;"><strong>Alterado por:</strong> ${user.name}</p>` : ''}
           </div>
-        `);
+        `, 'Ver Alterações');
         break;
 
       case 'comment':
@@ -120,7 +128,7 @@ export async function POST(request) {
             <p style="margin: 0;"><strong>Comentário de:</strong> ${comment?.author?.name || user?.name || 'N/A'}</p>
             <p style="margin: 10px 0 0 0;">${comment?.text || 'Sem texto'}</p>
           </div>
-        `);
+        `, 'Responder Comentário');
         break;
 
       case 'assigned':
@@ -136,7 +144,7 @@ export async function POST(request) {
               <strong>Status:</strong> Em atendimento
             </p>
           </div>
-        `);
+        `, 'Acompanhar Chamado');
         break;
 
       case 'resolved':
@@ -154,7 +162,7 @@ export async function POST(request) {
             <p style="margin: 0;"><strong>Tempo de Resolução:</strong> ${resolutionTime}</p>
             <p style="margin: 10px 0 0 0;"><strong>Concluído por:</strong> ${ticket.assignedTo?.name || 'N/A'}</p>
           </div>
-        `);
+        `, 'Verificar Solução');
         break;
 
       default:
