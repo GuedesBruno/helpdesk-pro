@@ -17,7 +17,7 @@ export default function HomePage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [resolvedTickets, setResolvedTickets] = useState([]);
-  const [view, setView] = useState('list'); // 'list', 'detail', 'new', 'users', 'departments', 'resolved'
+  const [view, setView] = useState('list'); // 'list', 'detail', 'new', 'users', 'departments', 'resolved', 'open' (colaborador)
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
@@ -108,6 +108,8 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!currentUser) return;
+    // Não carregar tickets na view 'resolved' (tem query separada) ou 'open' (colaborador)
+    if (view === 'resolved' || (view === 'open' && currentUser.role === 'colaborador')) return;
 
     setLoading(true);
     const ticketsCollection = collection(db, 'tickets');
@@ -138,7 +140,7 @@ export default function HomePage() {
     });
 
     return () => unsubscribeTickets();
-  }, [currentUser]);
+  }, [currentUser, view]);
 
   // Load resolved tickets
   useEffect(() => {
@@ -146,25 +148,59 @@ export default function HomePage() {
 
     const ticketsCollection = collection(db, 'tickets');
 
-    // Admin sees all resolved tickets, Atendente sees only their own
+    // Admin sees all resolved tickets, Atendente sees only their own, Colaborador sees only theirs
     const q = currentUser.role === 'admin'
       ? query(
         ticketsCollection,
         where('status', '==', 'resolved'),
         orderBy('timeResolved', 'desc')
       )
-      : query(
-        ticketsCollection,
-        where('status', '==', 'resolved'),
-        where('assignedTo.uid', '==', currentUser.uid),
-        orderBy('timeResolved', 'desc')
-      );
+      : currentUser.role === 'atendente'
+        ? query(
+          ticketsCollection,
+          where('status', '==', 'resolved'),
+          where('assignedTo.uid', '==', currentUser.uid),
+          orderBy('timeResolved', 'desc')
+        )
+        : query(
+          ticketsCollection,
+          where('status', '==', 'resolved'),
+          where('createdBy.uid', '==', currentUser.uid),
+          orderBy('timeResolved', 'desc')
+        );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const resolved = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setResolvedTickets(resolved);
     }, (error) => {
       console.error("Erro ao buscar chamados resolvidos:", error);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, view]);
+
+  // Load open tickets for collaborators (view 'open')
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'colaborador' || view !== 'open') return;
+
+    setLoading(true);
+    const ticketsCollection = collection(db, 'tickets');
+
+    const q = query(
+      ticketsCollection,
+      where('createdBy.uid', '==', currentUser.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allTickets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Filtrar apenas chamados não resolvidos
+      const openTickets = allTickets.filter(t => t.status !== 'resolved' && t.status !== 'canceled');
+      setTickets(openTickets);
+      setLoading(false);
+    }, (error) => {
+      console.error("Erro ao buscar chamados em aberto:", error);
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -389,11 +425,24 @@ export default function HomePage() {
           </div>
 
           <nav className="mt-10">
-            {/* Colaborador vê "Novo Chamado" */}
+            {/* Colaborador vê "Chamados em Aberto" e "Chamados Resolvidos" */}
             {currentUser.role === 'colaborador' && (
-              <button onClick={() => setView('new')} className="w-full flex items-center gap-3 px-4 py-2 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
-                <Plus className="w-5 h-5" /> Novo Chamado
-              </button>
+              <>
+                <button
+                  onClick={() => setView('open')}
+                  className={`w-full flex items-center gap-3 px-4 py-2 font-semibold transition-colors rounded-md ${view === 'open' ? 'bg-blue-600 text-white' : 'text-tec-gray-dark bg-tec-gray-light hover:bg-gray-300'
+                    }`}
+                >
+                  <Users className="w-5 h-5" /> Chamados em Aberto
+                </button>
+                <button
+                  onClick={() => setView('resolved')}
+                  className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md ${view === 'resolved' ? 'bg-green-600 text-white' : 'text-tec-gray-dark bg-tec-gray-light hover:bg-gray-300'
+                    }`}
+                >
+                  <CheckCircle className="w-5 h-5" /> Chamados Resolvidos
+                </button>
+              </>
             )}
 
             {/* Admin e Atendente veem "Fila" */}
@@ -538,6 +587,17 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Botão Flutuante para Novo Chamado - Apenas para Colaboradores */}
+      {currentUser && currentUser.role === 'colaborador' && view !== 'new' && view !== 'detail' && (
+        <button
+          onClick={() => setView('new')}
+          className="fixed bottom-8 right-8 w-16 h-16 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center z-50 hover:scale-110"
+          title="Novo Chamado"
+        >
+          <Plus className="w-8 h-8" />
+        </button>
       )}
     </div>
   );

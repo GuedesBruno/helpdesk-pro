@@ -3,9 +3,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, deleteDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { ArrowLeft, Trash2, Send, Play, Search, MessageSquare, CheckCircle, UserPlus } from 'lucide-react';
-import { startTicket, updateTicketStatus, releaseTicketFromAttendant, getAllAttendants, transferTicket } from '@/lib/queueDistribution';
-import { notifyTicketStarted, notifyStatusChange, notifyTicketCanceled, notifyCollaboratorResponse } from '@/lib/notifications';
+import { ArrowLeft, Trash2, Send, Play, Search, MessageSquare, CheckCircle, UserPlus, X } from 'lucide-react';
 
 export default function TicketDetail({ ticket, user, onBack }) {
   const [status, setStatus] = useState(ticket.status);
@@ -19,6 +17,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
   const [selectedAttendant, setSelectedAttendant] = useState('');
   const [transferring, setTransferring] = useState(false);
   const [currentTicket, setCurrentTicket] = useState(ticket); // Estado local para ticket atualizado
+  const [showDeleteModal, setShowDeleteModal] = useState(false); // Modal de confirmação de exclusão
 
   // Permission checks - Todos atendentes e admins podem editar qualquer chamado
   const canChangeStatus = user.role === 'admin' || user.role === 'atendente';
@@ -261,17 +260,50 @@ export default function TicketDetail({ ticket, user, onBack }) {
     }
   };
 
-  // Excluir chamado
-  const handleDelete = async () => {
-    if (window.confirm('Tem certeza que deseja excluir este chamado?')) {
-      // Se tem atendente atribuído, notificar
-      if (ticket.assignedTo) {
-        await notifyTicketCanceled(ticket, ticket.assignedTo);
-        await releaseTicketFromAttendant(ticket.assignedTo.uid);
-      }
+  // Reabrir chamado (resolved -> analyzing)
+  const handleReopen = async () => {
+    try {
+      const ticketRef = doc(db, 'tickets', ticket.id);
+      await updateDoc(ticketRef, {
+        status: 'analyzing',
+        timeResolved: null,
+        reopenedAt: serverTimestamp(),
+        updatedAt: new Date()
+      });
+      setStatus('analyzing');
 
+      // Enviar notificação por email
+      await fetch('/api/notify-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'status_change',
+          ticket: { ...ticket, id: ticket.id, status: 'analyzing' },
+          previousStatus: 'resolved',
+          user
+        }),
+      });
+    } catch (error) {
+      console.error('Erro ao reabrir chamado:', error);
+    }
+  };
+
+  // Função para abrir o modal de exclusão
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
+
+  // Excluir chamado (confirmação)
+  const handleDelete = async () => {
+    try {
       await deleteDoc(doc(db, 'tickets', ticket.id));
+      console.log('Chamado excluído com sucesso');
+      setShowDeleteModal(false);
       onBack();
+    } catch (error) {
+      console.error('Erro ao excluir chamado:', error);
+      alert('Erro ao excluir chamado: ' + error.message);
+      setShowDeleteModal(false);
     }
   };
 
@@ -428,7 +460,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
               </button>
             )}
             {canDelete && (
-              <button onClick={handleDelete} className="flex items-center gap-2 px-3 py-1 text-sm font-semibold text-white bg-tec-danger rounded-md hover:bg-red-700">
+              <button onClick={handleDeleteClick} className="flex items-center gap-2 px-3 py-1 text-sm font-semibold text-white bg-tec-danger rounded-md hover:bg-red-700">
                 <Trash2 className="w-4 h-4" /> Excluir
               </button>
             )}
@@ -471,6 +503,15 @@ export default function TicketDetail({ ticket, user, onBack }) {
                 <CheckCircle className="w-4 h-4" /> Resolver
               </button>
             )}
+          </div>
+        )}
+
+        {/* Botão de Reabertura - Para chamados resolvidos */}
+        {status === 'resolved' && (user.uid === ticket.createdBy.uid || canActOnTicket) && (
+          <div className="mt-4">
+            <button onClick={handleReopen} className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700">
+              <Play className="w-4 h-4" /> Reabrir Chamado
+            </button>
           </div>
         )}
       </div>
@@ -568,8 +609,8 @@ export default function TicketDetail({ ticket, user, onBack }) {
               >
                 <div
                   className={`max-w-[70%] rounded-lg px-4 py-2 ${isCurrentUser
-                      ? 'bg-blue-500 text-white rounded-br-none'
-                      : 'bg-gray-200 text-gray-800 rounded-bl-none'
+                    ? 'bg-blue-500 text-white rounded-br-none'
+                    : 'bg-gray-200 text-gray-800 rounded-bl-none'
                     }`}
                 >
                   {/* Nome do remetente (apenas se não for o usuário atual) */}
@@ -617,6 +658,43 @@ export default function TicketDetail({ ticket, user, onBack }) {
           </button>
         </form>
       </div>
+
+      {/* Modal de Confirmação de Exclusão */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-red-600">⚠️ Confirmar Exclusão</h3>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <p className="mb-6 text-gray-700">
+              Tem certeza que deseja excluir este chamado? Esta ação não pode ser desfeita.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-2 text-gray-700 transition-colors bg-gray-200 rounded-md hover:bg-gray-300 font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex items-center justify-center flex-1 gap-2 px-4 py-2 text-white transition-colors bg-red-600 rounded-md hover:bg-red-700 font-semibold"
+              >
+                <Trash2 className="w-4 h-4" />
+                Excluir Chamado
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
