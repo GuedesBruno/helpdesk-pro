@@ -399,7 +399,7 @@ export default function HomePage() {
       {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-40
-        w-64 p-6 text-white bg-tec-blue 
+        w-72 p-6 text-white bg-tec-blue 
         flex flex-col justify-between
         transform transition-transform duration-300 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -430,17 +430,17 @@ export default function HomePage() {
               <>
                 <button
                   onClick={() => setView('open')}
-                  className={`w-full flex items-center gap-3 px-4 py-2 font-semibold transition-colors rounded-md ${view === 'open' ? 'bg-blue-600 text-white' : 'text-tec-gray-dark bg-tec-gray-light hover:bg-gray-300'
+                  className={`w-full flex items-center gap-3 px-4 py-2 font-semibold transition-colors rounded-md whitespace-nowrap ${view === 'open' ? 'bg-blue-600 text-white' : 'text-tec-gray-dark bg-tec-gray-light hover:bg-gray-300'
                     }`}
                 >
-                  <Users className="w-5 h-5" /> Chamados em Aberto
+                  <Users className="w-5 h-5 flex-shrink-0" /> Meus Chamados
                 </button>
                 <button
                   onClick={() => setView('resolved')}
-                  className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md ${view === 'resolved' ? 'bg-green-600 text-white' : 'text-tec-gray-dark bg-tec-gray-light hover:bg-gray-300'
+                  className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md whitespace-nowrap ${view === 'resolved' ? 'bg-green-600 text-white' : 'text-tec-gray-dark bg-tec-gray-light hover:bg-gray-300'
                     }`}
                 >
-                  <CheckCircle className="w-5 h-5" /> Chamados Resolvidos
+                  <CheckCircle className="w-5 h-5 flex-shrink-0" /> Chamados Resolvidos
                 </button>
               </>
             )}

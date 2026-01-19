@@ -5,40 +5,40 @@ import { NextResponse } from 'next/server';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request) {
-    try {
-        const { type, ticket, user, previousStatus, comment } = await request.json();
+  try {
+    const { type, ticket, user, previousStatus, comment } = await request.json();
 
-        if (!type || !ticket) {
-            return NextResponse.json(
-                { error: 'Tipo e dados do ticket são obrigatórios' },
-                { status: 400 }
-            );
-        }
+    if (!type || !ticket) {
+      return NextResponse.json(
+        { error: 'Tipo e dados do ticket são obrigatórios' },
+        { status: 400 }
+      );
+    }
 
-        const supportEmail = 'suporte@tecassistiva.com.br';
-        const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <onboarding@resend.dev>';
+    const supportEmail = 'suporte@tecassistiva.com.br';
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <onboarding@resend.dev>';
 
-        let subject = '';
-        let emailHtml = '';
+    let subject = '';
+    let emailHtml = '';
 
-        const statusLabels = {
-            queue: 'Em Fila',
-            started: 'Iniciado',
-            analyzing: 'Em Análise',
-            waiting_user: 'Aguardando Retorno',
-            resolved: 'Resolvido',
-            canceled: 'Cancelado'
-        };
+    const statusLabels = {
+      queue: 'Em Fila',
+      started: 'Iniciado',
+      analyzing: 'Em Análise',
+      waiting_user: 'Aguardando Retorno',
+      resolved: 'Resolvido',
+      canceled: 'Cancelado'
+    };
 
-        const priorityLabels = {
-            low: 'Baixa',
-            medium: 'Média',
-            high: 'Alta',
-            urgent: 'Urgente'
-        };
+    const priorityLabels = {
+      low: 'Baixa',
+      medium: 'Média',
+      high: 'Alta',
+      urgent: 'Urgente'
+    };
 
-        // Template base do email
-        const baseTemplate = (title, content) => `
+    // Template base do email
+    const baseTemplate = (title, content) => `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: #002554; padding: 20px; text-align: center;">
           <h1 style="color: white; margin: 0;">Helpdesk Tecassistiva</h1>
@@ -57,8 +57,8 @@ export async function POST(request) {
       </div>
     `;
 
-        // Informações do ticket
-        const ticketInfo = `
+    // Informações do ticket
+    const ticketInfo = `
       <div style="background: white; padding: 15px; border-radius: 6px; margin: 20px 0;">
         <p style="margin: 5px 0;"><strong>ID do Chamado:</strong> ${ticket.id}</p>
         <p style="margin: 5px 0;"><strong>Assunto:</strong> ${ticket.subject}</p>
@@ -70,10 +70,10 @@ export async function POST(request) {
       </div>
     `;
 
-        switch (type) {
-            case 'new':
-                subject = `🆕 Novo Chamado: ${ticket.subject}`;
-                emailHtml = baseTemplate('Novo Chamado Criado', `
+    switch (type) {
+      case 'new':
+        subject = `🆕 Novo Chamado: ${ticket.subject}`;
+        emailHtml = baseTemplate('Novo Chamado Criado', `
           <p style="color: #374151; font-size: 16px;">
             Um novo chamado foi criado no sistema.
           </p>
@@ -83,11 +83,11 @@ export async function POST(request) {
             <p style="margin: 10px 0 0 0;">${ticket.description || 'Sem descrição'}</p>
           </div>
         `);
-                break;
+        break;
 
-            case 'status_change':
-                subject = `🔄 Status Alterado: ${ticket.subject}`;
-                emailHtml = baseTemplate('Status do Chamado Alterado', `
+      case 'status_change':
+        subject = `🔄 Status Alterado: ${ticket.subject}`;
+        emailHtml = baseTemplate('Status do Chamado Alterado', `
           <p style="color: #374151; font-size: 16px;">
             O status do chamado foi alterado.
           </p>
@@ -99,11 +99,11 @@ export async function POST(request) {
             ${user ? `<p style="margin: 10px 0 0 0;"><strong>Alterado por:</strong> ${user.name}</p>` : ''}
           </div>
         `);
-                break;
+        break;
 
-            case 'comment':
-                subject = `💬 Novo Comentário: ${ticket.subject}`;
-                emailHtml = baseTemplate('Novo Comentário Adicionado', `
+      case 'comment':
+        subject = `💬 Novo Comentário: ${ticket.subject}`;
+        emailHtml = baseTemplate('Novo Comentário Adicionado', `
           <p style="color: #374151; font-size: 16px;">
             Um novo comentário foi adicionado ao chamado.
           </p>
@@ -113,11 +113,11 @@ export async function POST(request) {
             <p style="margin: 10px 0 0 0;">${comment?.text || 'Sem texto'}</p>
           </div>
         `);
-                break;
+        break;
 
-            case 'assigned':
-                subject = `👤 Chamado Atribuído: ${ticket.subject}`;
-                emailHtml = baseTemplate('Chamado Atribuído a Atendente', `
+      case 'assigned':
+        subject = `👤 Chamado Atribuído: ${ticket.subject}`;
+        emailHtml = baseTemplate('Chamado Atribuído a Atendente', `
           <p style="color: #374151; font-size: 16px;">
             O chamado foi atribuído a um atendente.
           </p>
@@ -128,15 +128,15 @@ export async function POST(request) {
             </p>
           </div>
         `);
-                break;
+        break;
 
-            case 'resolved':
-                subject = `✅ Chamado Concluído: ${ticket.subject}`;
-                const resolutionTime = ticket.timeStarted && ticket.timeResolved
-                    ? calculateResolutionTime(ticket.timeStarted, ticket.timeResolved)
-                    : 'N/A';
+      case 'resolved':
+        subject = `✅ Chamado Concluído: ${ticket.subject}`;
+        const resolutionTime = ticket.timeStarted && ticket.timeResolved
+          ? calculateResolutionTime(ticket.timeStarted, ticket.timeResolved)
+          : 'N/A';
 
-                emailHtml = baseTemplate('Chamado Concluído', `
+        emailHtml = baseTemplate('Chamado Concluído', `
           <p style="color: #374151; font-size: 16px;">
             O chamado foi concluído.
           </p>
@@ -146,49 +146,77 @@ export async function POST(request) {
             <p style="margin: 10px 0 0 0;"><strong>Concluído por:</strong> ${ticket.assignedTo?.name || 'N/A'}</p>
           </div>
         `);
-                break;
+        break;
 
-            default:
-                return NextResponse.json(
-                    { error: 'Tipo de notificação inválido' },
-                    { status: 400 }
-                );
-        }
-
-        const data = await resend.emails.send({
-            from: fromEmail,
-            to: [supportEmail],
-            subject: subject,
-            html: emailHtml,
-        });
-
-        return NextResponse.json({ success: true, id: data.id });
-    } catch (error) {
-        console.error('Erro ao enviar notificação:', error);
+      default:
         return NextResponse.json(
-            { error: 'Erro ao enviar notificação', details: error.message },
-            { status: 500 }
+          { error: 'Tipo de notificação inválido' },
+          { status: 400 }
         );
     }
+
+    // Determinar destinatário baseado no tipo de ação e papel do usuário
+    let recipientEmail = supportEmail;
+
+    // Ações do ATENDENTE/ADMIN → Email para COLABORADOR
+    if (user && (user.role === 'atendente' || user.role === 'admin')) {
+      if (type === 'assigned' || type === 'status_change' || type === 'resolved') {
+        // Atendente iniciou, mudou status ou resolveu → Email para colaborador
+        recipientEmail = ticket.createdBy?.email || supportEmail;
+      }
+    }
+
+    // Ações do COLABORADOR → Email para SUPORTE
+    if (user && user.role === 'colaborador') {
+      if (type === 'comment' || type === 'new') {
+        // Colaborador comentou ou criou chamado → Email para suporte
+        recipientEmail = supportEmail;
+      }
+      if (type === 'status_change' && ticket.status === 'analyzing') {
+        // Colaborador reabriu → Email para suporte
+        recipientEmail = supportEmail;
+      }
+    }
+
+    // Novo chamado SEMPRE vai para suporte
+    if (type === 'new') {
+      recipientEmail = supportEmail;
+    }
+
+    const data = await resend.emails.send({
+      from: fromEmail,
+      to: [recipientEmail],
+      subject: subject,
+      html: emailHtml,
+    });
+
+    return NextResponse.json({ success: true, id: data.id, sentTo: recipientEmail });
+  } catch (error) {
+    console.error('Erro ao enviar notificação:', error);
+    return NextResponse.json(
+      { error: 'Erro ao enviar notificação', details: error.message },
+      { status: 500 }
+    );
+  }
 }
 
 function calculateResolutionTime(startTime, endTime) {
-    try {
-        const start = startTime.toDate ? startTime.toDate() : new Date(startTime);
-        const end = endTime.toDate ? endTime.toDate() : new Date(endTime);
-        const hours = (end - start) / (1000 * 60 * 60);
+  try {
+    const start = startTime.toDate ? startTime.toDate() : new Date(startTime);
+    const end = endTime.toDate ? endTime.toDate() : new Date(endTime);
+    const hours = (end - start) / (1000 * 60 * 60);
 
-        if (hours < 1) {
-            const minutes = Math.round(hours * 60);
-            return `${minutes} minuto${minutes !== 1 ? 's' : ''}`;
-        } else if (hours < 24) {
-            return `${hours.toFixed(1)} hora${hours >= 2 ? 's' : ''}`;
-        } else {
-            const days = Math.floor(hours / 24);
-            const remainingHours = Math.round(hours % 24);
-            return `${days} dia${days !== 1 ? 's' : ''} e ${remainingHours} hora${remainingHours !== 1 ? 's' : ''}`;
-        }
-    } catch (error) {
-        return 'N/A';
+    if (hours < 1) {
+      const minutes = Math.round(hours * 60);
+      return `${minutes} minuto${minutes !== 1 ? 's' : ''}`;
+    } else if (hours < 24) {
+      return `${hours.toFixed(1)} hora${hours >= 2 ? 's' : ''}`;
+    } else {
+      const days = Math.floor(hours / 24);
+      const remainingHours = Math.round(hours % 24);
+      return `${days} dia${days !== 1 ? 's' : ''} e ${remainingHours} hora${remainingHours !== 1 ? 's' : ''}`;
     }
+  } catch (error) {
+    return 'N/A';
+  }
 }
