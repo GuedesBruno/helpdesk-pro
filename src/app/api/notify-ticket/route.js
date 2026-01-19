@@ -8,7 +8,13 @@ export async function POST(request) {
   try {
     const { type, ticket, user, previousStatus, comment } = await request.json();
 
+    console.log('📧 [EMAIL API] Recebida requisição de notificação');
+    console.log('📧 [EMAIL API] Tipo:', type);
+    console.log('📧 [EMAIL API] Ticket ID:', ticket?.id);
+    console.log('📧 [EMAIL API] User:', user?.name, user?.role);
+
     if (!type || !ticket) {
+      console.error('❌ [EMAIL API] Erro: Tipo ou ticket ausente');
       return NextResponse.json(
         { error: 'Tipo e dados do ticket são obrigatórios' },
         { status: 400 }
@@ -17,6 +23,9 @@ export async function POST(request) {
 
     const supportEmail = 'suporte@tecassistiva.com.br';
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <onboarding@resend.dev>';
+
+    console.log('📧 [EMAIL API] From Email:', fromEmail);
+    console.log('📧 [EMAIL API] Resend API Key exists:', !!process.env.RESEND_API_KEY);
 
     let subject = '';
     let emailHtml = '';
@@ -63,7 +72,6 @@ export async function POST(request) {
         <p style="margin: 5px 0;"><strong>ID do Chamado:</strong> ${ticket.id}</p>
         <p style="margin: 5px 0;"><strong>Assunto:</strong> ${ticket.subject}</p>
         <p style="margin: 5px 0;"><strong>Solicitante:</strong> ${ticket.createdBy?.name || 'N/A'} (${ticket.createdBy?.email || 'N/A'})</p>
-        <p style="margin: 5px 0;"><strong>Departamento:</strong> ${ticket.departmentName || 'N/A'}</p>
         <p style="margin: 5px 0;"><strong>Prioridade:</strong> ${priorityLabels[ticket.priority] || ticket.priority}</p>
         <p style="margin: 5px 0;"><strong>Status Atual:</strong> ${statusLabels[ticket.status] || ticket.status}</p>
         <p style="margin: 5px 0;"><strong>Atendente:</strong> ${ticket.assignedTo?.name || 'Não atribuído'}</p>
@@ -116,15 +124,16 @@ export async function POST(request) {
         break;
 
       case 'assigned':
-        subject = `👤 Chamado Atribuído: ${ticket.subject}`;
-        emailHtml = baseTemplate('Chamado Atribuído a Atendente', `
+        const attendantName = ticket.assignedTo?.name || 'Um atendente';
+        subject = `👤 Atendimento Iniciado: ${ticket.subject}`;
+        emailHtml = baseTemplate('Atendimento Iniciado', `
           <p style="color: #374151; font-size: 16px;">
-            O chamado foi atribuído a um atendente.
+            O atendente <strong>${attendantName}</strong> iniciou o atendimento do seu chamado.
           </p>
           ${ticketInfo}
           <div style="background: #dcfce7; padding: 15px; border-radius: 6px; border-left: 4px solid #22c55e;">
             <p style="margin: 0;">
-              <strong>Atribuído a:</strong> ${ticket.assignedTo?.name || 'N/A'}
+              <strong>Status:</strong> Em atendimento
             </p>
           </div>
         `);
@@ -183,12 +192,20 @@ export async function POST(request) {
       recipientEmail = supportEmail;
     }
 
+    console.log('📧 [EMAIL API] Destinatário determinado:', recipientEmail);
+    console.log('📧 [EMAIL API] Assunto:', subject);
+    console.log('📧 [EMAIL API] Tentando enviar email...');
+
     const data = await resend.emails.send({
       from: fromEmail,
       to: [recipientEmail],
       subject: subject,
       html: emailHtml,
     });
+
+    console.log('✅ [EMAIL API] Email enviado com sucesso!');
+    console.log('✅ [EMAIL API] ID:', data.id);
+    console.log('✅ [EMAIL API] Enviado para:', recipientEmail);
 
     return NextResponse.json({ success: true, id: data.id, sentTo: recipientEmail });
   } catch (error) {

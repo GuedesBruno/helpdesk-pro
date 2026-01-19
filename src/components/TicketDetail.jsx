@@ -102,7 +102,8 @@ export default function TicketDetail({ ticket, user, onBack }) {
             id: ticket.id,
             status: 'started',
             assignedTo: { uid: user.uid, name: user.name, email: user.email }
-          }
+          },
+          user // Adicionar user para determinar destinatário
         }),
       });
     } catch (error) {

@@ -407,7 +407,7 @@ export default function HomePage() {
         <div>
           <button
             onClick={() => {
-              setView(currentUser.role === 'colaborador' ? 'new' : 'list');
+              setView(currentUser.role === 'colaborador' ? 'open' : 'list');
               setSelectedTicket(null);
               setSidebarOpen(false);
             }}
