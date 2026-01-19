@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDoc } from 'firebase/firestore';
-import { Users, Mail, Trash2, X, Loader2 } from 'lucide-react';
+import { Users, Mail, Trash2, X, Loader2, Edit } from 'lucide-react';
 
 export default function UserManagement({ onBack }) {
+    console.log('🔄 UserManagement component loaded - Version 2.0');
+
     const [users, setUsers] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -16,6 +18,16 @@ export default function UserManagement({ onBack }) {
     const [inviting, setInviting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const [editForm, setEditForm] = useState({
+        name: '',
+        email: '',
+        role: '',
+        department: ''
+    });
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [userToDelete, setUserToDelete] = useState(null);
 
     useEffect(() => {
         const usersCollection = collection(db, 'users');
@@ -56,15 +68,88 @@ export default function UserManagement({ onBack }) {
     };
 
     const handleDeleteUser = async (userId) => {
-        if (!confirm('Tem certeza que deseja remover este usuário?')) return;
+        console.log('handleDeleteUser chamado para userId:', userId);
+        setUserToDelete(userId);
+        setShowDeleteModal(true);
+    };
 
+    const confirmDelete = async () => {
+        if (!userToDelete) return;
+
+        console.log('Confirmando exclusão do usuário:', userToDelete);
         try {
-            const userRef = doc(db, 'users', userId);
+            const userRef = doc(db, 'users', userToDelete);
             await deleteDoc(userRef);
+            console.log('Usuário excluído com sucesso!');
             setSuccess('Usuário removido com sucesso');
+            setTimeout(() => setSuccess(''), 3000);
+            setShowDeleteModal(false);
+            setUserToDelete(null);
         } catch (error) {
             console.error('Erro ao remover usuário:', error);
-            setError('Erro ao remover usuário');
+            console.error('Código do erro:', error.code);
+            console.error('Mensagem do erro:', error.message);
+
+            // Mensagem de erro mais detalhada
+            let errorMessage = 'Erro ao remover usuário';
+            if (error.code === 'permission-denied') {
+                errorMessage = 'Permissão negada. Verifique se você é administrador e se as regras do Firestore estão corretas.';
+            } else if (error.message) {
+                errorMessage = `Erro ao remover usuário: ${error.message}`;
+            }
+
+            setError(errorMessage);
+            setTimeout(() => setError(''), 5000);
+            setShowDeleteModal(false);
+            setUserToDelete(null);
+        }
+    };
+
+    const handleOpenEditModal = (user) => {
+        setEditingUser(user);
+        setEditForm({
+            name: user.name || '',
+            email: user.email || '',
+            role: user.role || 'colaborador',
+            department: user.department || ''
+        });
+        setShowEditModal(true);
+        setError('');
+        setSuccess('');
+    };
+
+    const handleUpdateUser = async (e) => {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
+
+        try {
+            // Buscar nome do departamento se foi alterado
+            let departmentName = editingUser.departmentName;
+            if (editForm.department !== editingUser.department) {
+                const deptRef = doc(db, 'departments', editForm.department);
+                const deptDoc = await getDoc(deptRef);
+                departmentName = deptDoc.exists() ? deptDoc.data().name : '';
+            }
+
+            // Atualizar usuário no Firestore
+            const userRef = doc(db, 'users', editingUser.id);
+            await updateDoc(userRef, {
+                name: editForm.name,
+                email: editForm.email,
+                role: editForm.role,
+                department: editForm.department,
+                departmentName: departmentName,
+                updatedAt: new Date()
+            });
+
+            setSuccess('Usuário atualizado com sucesso!');
+            setShowEditModal(false);
+            setEditingUser(null);
+            setEditForm({ name: '', email: '', role: '', department: '' });
+        } catch (error) {
+            console.error('Erro ao atualizar usuário:', error);
+            setError('Erro ao atualizar usuário: ' + error.message);
         }
     };
 
@@ -212,13 +297,25 @@ export default function UserManagement({ onBack }) {
                                         </select>
                                     </td>
                                     <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
-                                        <button
-                                            onClick={() => handleDeleteUser(user.id)}
-                                            className="text-red-600 hover:text-red-900"
-                                            title="Remover usuário"
-                                        >
-                                            <Trash2 className="w-5 h-5" />
-                                        </button>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => handleOpenEditModal(user)}
+                                                className="text-blue-600 hover:text-blue-900"
+                                                title="Editar usuário"
+                                            >
+                                                <Edit className="w-5 h-5" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteUser(user.id);
+                                                }}
+                                                className="text-red-600 hover:text-red-900"
+                                                title="Remover usuário"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -320,6 +417,156 @@ export default function UserManagement({ onBack }) {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Edição */}
+            {showEditModal && editingUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-slate-800">Editar Usuário</h3>
+                            <button
+                                onClick={() => {
+                                    setShowEditModal(false);
+                                    setEditingUser(null);
+                                    setEditForm({ name: '', email: '', role: '', department: '' });
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateUser} className="space-y-4">
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-700">
+                                    Nome
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editForm.name}
+                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-md border-gray-300 focus:outline-none focus:ring-1 focus:ring-tec-blue"
+                                    required
+                                    placeholder="Nome do usuário"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-700">
+                                    Email
+                                </label>
+                                <input
+                                    type="email"
+                                    value={editForm.email}
+                                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-md border-gray-300 focus:outline-none focus:ring-1 focus:ring-tec-blue"
+                                    required
+                                    placeholder="usuario@email.com"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-700">
+                                    Permissão
+                                </label>
+                                <select
+                                    value={editForm.role}
+                                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-md border-gray-300 focus:outline-none focus:ring-1 focus:ring-tec-blue"
+                                    required
+                                >
+                                    <option value="colaborador">Colaborador</option>
+                                    <option value="atendente">Atendente</option>
+                                    <option value="admin">Administrador</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-700">
+                                    Departamento *
+                                </label>
+                                <select
+                                    value={editForm.department}
+                                    onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-md border-gray-300 focus:outline-none focus:ring-1 focus:ring-tec-blue"
+                                    required
+                                >
+                                    <option value="">Selecione um departamento</option>
+                                    {departments.map(dept => (
+                                        <option key={dept.id} value={dept.code}>
+                                            {dept.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowEditModal(false);
+                                        setEditingUser(null);
+                                        setEditForm({ name: '', email: '', role: '', department: '' });
+                                    }}
+                                    className="flex-1 px-4 py-2 text-gray-700 transition-colors bg-gray-200 rounded-md hover:bg-gray-300"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex items-center justify-center flex-1 gap-2 px-4 py-2 text-white transition-colors bg-tec-blue rounded-md hover:bg-tec-blue-light"
+                                >
+                                    <Edit className="w-4 h-4" />
+                                    Salvar Alterações
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Confirmação de Exclusão */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-red-600">⚠️ Confirmar Exclusão</h3>
+                            <button
+                                onClick={() => {
+                                    setShowDeleteModal(false);
+                                    setUserToDelete(null);
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <p className="mb-6 text-gray-700">
+                            Tem certeza que deseja remover este usuário? Esta ação não pode ser desfeita.
+                        </p>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowDeleteModal(false);
+                                    setUserToDelete(null);
+                                }}
+                                className="flex-1 px-4 py-2 text-gray-700 transition-colors bg-gray-200 rounded-md hover:bg-gray-300 font-semibold"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                className="flex items-center justify-center flex-1 gap-2 px-4 py-2 text-white transition-colors bg-red-600 rounded-md hover:bg-red-700 font-semibold"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Excluir Usuário
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
