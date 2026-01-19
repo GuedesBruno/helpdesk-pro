@@ -94,7 +94,8 @@ service cloud.firestore {
         (isColaborador() && 
          resource.data.createdBy.uid == request.auth.uid && (
            request.resource.data.status == resource.data.status ||  // Status unchanged
-           (resource.data.status == 'waiting_user' && request.resource.data.status == 'analyzing')  // Responding to request
+           (resource.data.status == 'waiting_user' && request.resource.data.status == 'analyzing') || // Responding to request
+           (resource.data.status == 'resolved' && request.resource.data.status == 'analyzing') // Reopening ticket
          ))
       );
       
