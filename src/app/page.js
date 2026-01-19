@@ -106,6 +106,37 @@ export default function HomePage() {
     };
   }, []);
 
+  const sortTickets = (ticketsList) => {
+    const priorityWeight = { urgent: 4, high: 3, medium: 2, low: 1 };
+
+    return [...ticketsList].sort((a, b) => {
+      if (!a.createdAt || !b.createdAt) return 0;
+
+      const dateA = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+      const dateB = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+
+      // Comparar apenas dias (zerando horas)
+      const dayA = new Date(dateA.getFullYear(), dateA.getMonth(), dateA.getDate()).getTime();
+      const dayB = new Date(dateB.getFullYear(), dateB.getMonth(), dateB.getDate()).getTime();
+
+      // 1. Dias diferentes: Mais antigos primeiro
+      if (dayA !== dayB) {
+        return dayA - dayB;
+      }
+
+      // 2. Mesmo dia: Prioridade (Urgente > Alta > Média > Baixa)
+      const weightA = priorityWeight[a.priority] || 0;
+      const weightB = priorityWeight[b.priority] || 0;
+
+      if (weightA !== weightB) {
+        return weightB - weightA;
+      }
+
+      // 3. Mesmo dia e prioridade: Mais antigos primeiro (por hora)
+      return dateA.getTime() - dateB.getTime();
+    });
+  };
+
   useEffect(() => {
     if (!currentUser) return;
     // Não carregar tickets na view 'resolved' (tem query separada) ou 'open' (colaborador)
@@ -132,7 +163,7 @@ export default function HomePage() {
       const activeTickets = allTickets.filter(t =>
         t.status !== 'resolved' && t.status !== 'canceled'
       );
-      setTickets(activeTickets);
+      setTickets(sortTickets(activeTickets));
       setLoading(false);
     }, (error) => {
       console.error("Erro ao buscar chamados:", error);
@@ -196,7 +227,7 @@ export default function HomePage() {
       const allTickets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       // Filtrar apenas chamados não resolvidos
       const openTickets = allTickets.filter(t => t.status !== 'resolved' && t.status !== 'canceled');
-      setTickets(openTickets);
+      setTickets(sortTickets(openTickets));
       setLoading(false);
     }, (error) => {
       console.error("Erro ao buscar chamados em aberto:", error);
@@ -489,6 +520,21 @@ export default function HomePage() {
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {tickets.map(ticket => <TicketCard key={ticket.id} ticket={ticket} onClick={() => handleSelectTicket(ticket)} />)}
                 {tickets.length === 0 && <p className="text-slate-600">Nenhum chamado encontrado.</p>}
+              </div>
+            )}
+          </div>
+        )}
+        {view === 'open' && (
+          <div>
+            <h2 className="mb-6 text-3xl font-bold text-slate-800">Meus Chamados</h2>
+            {loading ? (
+              <div className="flex justify-center mt-10">
+                <Loader2 className="w-8 h-8 text-tec-blue animate-spin" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+                {tickets.map(ticket => <TicketCard key={ticket.id} ticket={ticket} onClick={() => handleSelectTicket(ticket)} />)}
+                {tickets.length === 0 && <p className="text-slate-600">Nenhum chamado pendente encontrado.</p>}
               </div>
             )}
           </div>

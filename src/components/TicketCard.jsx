@@ -44,8 +44,20 @@ export default function TicketCard({ ticket, onClick }) {
     ? new Date(createdAt.toDate()).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
     : 'Data inválida';
 
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'urgent': return 'border-l-red-600';
+      case 'high': return 'border-l-yellow-500';
+      case 'medium': return 'border-l-blue-400';
+      case 'low': return 'border-l-green-600';
+      default: return 'border-l-tec-blue';
+    }
+  };
+
+  const priorityBorderClass = getPriorityColor(ticket.priority);
+
   return (
-    <div onClick={onClick} className="p-4 transition-all duration-300 bg-white border-l-4 rounded-md shadow-sm cursor-pointer border-l-tec-blue hover:shadow-lg hover:scale-[1.02]">
+    <div onClick={onClick} className={`p-4 transition-all duration-300 bg-white border-l-8 rounded-md shadow-sm cursor-pointer ${priorityBorderClass} hover:shadow-lg hover:scale-[1.02]`}>
       <div className="flex items-center justify-between mb-2">
         <span className={`px-2 py-1 text-xs font-bold text-white rounded-full ${statusColor}`}>
           {statusLabel}
