@@ -18,6 +18,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
   const [onlineAttendants, setOnlineAttendants] = useState([]);
   const [selectedAttendant, setSelectedAttendant] = useState('');
   const [transferring, setTransferring] = useState(false);
+  const [currentTicket, setCurrentTicket] = useState(ticket); // Estado local para ticket atualizado
 
   // Permission checks - Todos atendentes e admins podem editar qualquer chamado
   const canChangeStatus = user.role === 'admin' || user.role === 'atendente';
@@ -47,6 +48,22 @@ export default function TicketDetail({ ticket, user, onBack }) {
     };
     return labels[department] || department;
   };
+
+  // Listener em tempo real para atualizações do ticket
+  useEffect(() => {
+    if (!ticket.id) return;
+
+    const ticketRef = doc(db, 'tickets', ticket.id);
+    const unsubscribe = onSnapshot(ticketRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const updatedTicket = { id: docSnapshot.id, ...docSnapshot.data() };
+        setCurrentTicket(updatedTicket);
+        setStatus(updatedTicket.status);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [ticket.id]);
 
   useEffect(() => {
     if (!ticket.id) return;
@@ -124,23 +141,45 @@ export default function TicketDetail({ ticket, user, onBack }) {
   const handleRequestInfo = async () => {
     if (!requestMessage.trim()) return;
 
-    await updateTicketStatus(ticket.id, 'waiting_user', requestMessage);
-    setStatus('waiting_user');
-
-    // Notificar colaborador
-    console.log('Enviando notificação de solicitação de informação...');
-    console.log('Colaborador:', ticket.createdBy);
-    console.log('Mensagem:', requestMessage);
-
     try {
-      await notifyStatusChange(ticket, 'waiting_user', user, ticket.createdBy, requestMessage);
-      console.log('Notificação enviada com sucesso!');
-    } catch (error) {
-      console.error('Erro ao enviar notificação:', error);
-    }
+      // 1. Adicionar solicitação como comentário
+      await addDoc(collection(db, 'tickets', ticket.id, 'comments'), {
+        text: requestMessage,
+        createdBy: {
+          uid: user.uid,
+          name: user.name,
+          email: user.email,
+        },
+        createdAt: serverTimestamp(),
+        isRequest: true, // Marcar como solicitação
+      });
 
-    setRequestMessage('');
-    setShowRequestModal(false);
+      // 2. Atualizar status do ticket
+      const ticketRef = doc(db, 'tickets', ticket.id);
+      await updateDoc(ticketRef, {
+        status: 'waiting_user',
+        statusMessage: requestMessage,
+        updatedAt: new Date()
+      });
+      setStatus('waiting_user');
+
+      // 3. Enviar notificação por email
+      await fetch('/api/notify-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'status_change',
+          ticket: { ...ticket, id: ticket.id, status: 'waiting_user', statusMessage: requestMessage },
+          previousStatus: status,
+          user
+        }),
+      });
+
+      setRequestMessage('');
+      setShowRequestModal(false);
+    } catch (error) {
+      console.error('Erro ao solicitar informação:', error);
+    }
   };
 
   // Colaborador responde à solicitação de informação
@@ -149,7 +188,6 @@ export default function TicketDetail({ ticket, user, onBack }) {
 
     try {
       console.log('🔵 Iniciando resposta do colaborador...');
-      console.log('Status atual:', status);
 
       // 1. Adicionar comentário com a resposta
       await addDoc(collection(db, 'tickets', ticket.id, 'comments'), {
@@ -165,27 +203,30 @@ export default function TicketDetail({ ticket, user, onBack }) {
       console.log('✅ Comentário adicionado');
 
       // 2. Mudar status para analyzing
-      console.log('🔄 Atualizando status para analyzing...');
-      const statusUpdated = await updateTicketStatus(ticket.id, 'analyzing');
-      console.log('Status atualizado no Firestore:', statusUpdated);
-
-      // Atualizar também o documento do ticket diretamente
       const ticketRef = doc(db, 'tickets', ticket.id);
       await updateDoc(ticketRef, {
         status: 'analyzing',
+        statusMessage: '', // Limpar mensagem de solicitação
         updatedAt: new Date(),
       });
-      console.log('✅ Status atualizado diretamente no ticket');
-
       setStatus('analyzing');
-      console.log('✅ Estado local atualizado para analyzing');
+      console.log('✅ Status atualizado para analyzing');
 
-      // 3. Notificar atendente
-      if (ticket.assignedTo) {
-        console.log('📧 Enviando notificação para atendente...');
-        await notifyCollaboratorResponse(ticket, user, ticket.assignedTo, collaboratorResponse);
-        console.log('✅ Notificação enviada');
-      }
+      // 3. Enviar notificação por email para suporte@tecassistiva.com.br
+      await fetch('/api/notify-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'comment',
+          ticket: { ...ticket, id: ticket.id },
+          user,
+          comment: {
+            text: `Resposta do colaborador: ${collaboratorResponse}`,
+            author: { uid: user.uid, name: user.name, role: user.role }
+          }
+        }),
+      });
+      console.log('✅ Email de notificação enviado');
 
       // 4. Limpar campo
       setCollaboratorResponse('');
@@ -316,15 +357,14 @@ export default function TicketDetail({ ticket, user, onBack }) {
       </button>
 
       <div className="mb-6">
-        <h2 className="mb-2 text-3xl font-bold text-slate-800">{ticket.subject}</h2>
-        <p className="text-slate-600">{ticket.description}</p>
+        <h2 className="mb-2 text-3xl font-bold text-slate-800">{currentTicket.subject}</h2>
+        <p className="text-slate-600">{currentTicket.description}</p>
         <div className="flex flex-wrap gap-4 mt-4 text-sm text-slate-500">
-          <span><strong>Criado por:</strong> {ticket.createdBy.name}</span>
-          <span><strong>Prioridade:</strong> {getPriorityLabel(ticket.priority)}</span>
-          <span><strong>Departamento:</strong> {getDepartmentLabel(ticket.department)}</span>
-          {ticket.assignedTo && (
-            <span><strong>Atendente:</strong> {ticket.assignedTo.name}</span>
-          )}
+          <span><strong>Criado por:</strong> {currentTicket.createdBy.name}</span>
+          <span><strong>Prioridade:</strong> {getPriorityLabel(currentTicket.priority)}</span>
+          <span>
+            <strong>Atendente:</strong> {currentTicket.assignedTo ? currentTicket.assignedTo.name : 'Não atribuído'}
+          </span>
         </div>
       </div>
 
@@ -513,23 +553,68 @@ export default function TicketDetail({ ticket, user, onBack }) {
         </div>
       )}
 
-      {/* Comentários */}
+      {/* Comentários - Estilo Chat */}
       <div>
-        <h3 className="mb-4 text-xl font-bold text-slate-700">Comentários</h3>
-        <div className="space-y-4 mb-6 max-h-96 overflow-y-auto pr-2">
-          {comments.map(c => (
-            <div key={c.id} className="p-3 rounded-md bg-slate-100">
-              <p className="text-slate-800">{c.text}</p>
-              <p className="mt-1 text-xs text-right text-slate-500">
-                - {c.createdBy?.name || 'Usuário'} ({c.createdAt?.toDate ? new Date(c.createdAt.toDate()).toLocaleString('pt-BR') : '...'})
-              </p>
-            </div>
-          ))}
-          {comments.length === 0 && <p className="text-slate-500">Nenhum comentário.</p>}
+        <h3 className="mb-4 text-xl font-bold text-slate-700">Conversas</h3>
+        <div className="mb-6 max-h-96 overflow-y-auto pr-2 space-y-3">
+          {comments.map(c => {
+            // Verificar se a mensagem é do usuário atual
+            const isCurrentUser = c.createdBy?.uid === user.uid || c.author?.uid === user.uid;
+
+            return (
+              <div
+                key={c.id}
+                className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[70%] rounded-lg px-4 py-2 ${isCurrentUser
+                      ? 'bg-blue-500 text-white rounded-br-none'
+                      : 'bg-gray-200 text-gray-800 rounded-bl-none'
+                    }`}
+                >
+                  {/* Nome do remetente (apenas se não for o usuário atual) */}
+                  {!isCurrentUser && (
+                    <p className="text-xs font-semibold mb-1 opacity-70">
+                      {c.createdBy?.name || c.author?.name || 'Usuário'}
+                    </p>
+                  )}
+
+                  {/* Texto da mensagem */}
+                  <p className="text-sm break-words">{c.text}</p>
+
+                  {/* Timestamp */}
+                  <p className={`text-xs mt-1 ${isCurrentUser ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {c.createdAt?.toDate ? new Date(c.createdAt.toDate()).toLocaleString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) : '...'}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+          {comments.length === 0 && (
+            <p className="text-center text-slate-500 py-8">Nenhuma conversa ainda.</p>
+          )}
         </div>
+
+        {/* Campo de nova mensagem */}
         <form onSubmit={handleAddComment} className="flex gap-2">
-          <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Adicionar comentário..." className="flex-grow px-3 py-2 border rounded-md border-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-          <button type="submit" className="px-4 py-2 text-white bg-tec-blue rounded-md hover:bg-tec-blue-light"><Send className="w-5 h-5" /></button>
+          <input
+            type="text"
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Digite sua mensagem..."
+            className="flex-grow px-4 py-3 border rounded-full border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button
+            type="submit"
+            className="px-6 py-3 text-white bg-blue-500 rounded-full hover:bg-blue-600 transition-colors flex items-center justify-center"
+          >
+            <Send className="w-5 h-5" />
+          </button>
         </form>
       </div>
     </div>
