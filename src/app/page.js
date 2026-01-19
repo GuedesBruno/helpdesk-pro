@@ -12,7 +12,6 @@ import TicketDetail from '@/components/TicketDetail';
 import NewTicketForm from '@/components/NewTicketForm';
 import UserManagement from '@/components/UserManagement';
 import DepartmentManagement from '@/components/DepartmentManagement';
-import OnlineToggle from '@/components/OnlineToggle';
 
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -26,6 +25,7 @@ export default function HomePage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportDateFrom, setExportDateFrom] = useState('');
   const [exportDateTo, setExportDateTo] = useState('');
+  const [previousView, setPreviousView] = useState('list'); // Para rastrear view anterior
 
   // Helper function to retry Firestore operations
   const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
@@ -172,14 +172,6 @@ export default function HomePage() {
 
   const handleLogout = async () => {
     try {
-      // Set user offline before logout
-      if (currentUser && (currentUser.role === 'atendente' || currentUser.role === 'admin')) {
-        const userRef = doc(db, 'users', currentUser.uid);
-        await updateDoc(userRef, {
-          isOnline: false,
-          lastOnlineAt: new Date()
-        });
-      }
       await signOut(auth);
       setView('list');
       setSelectedTicket(null);
@@ -189,13 +181,14 @@ export default function HomePage() {
   };
 
   const handleSelectTicket = (ticket) => {
+    setPreviousView(view); // Salvar view atual antes de mudar
     setSelectedTicket(ticket);
     setView('detail');
   };
 
   const handleBackToList = () => {
     setSelectedTicket(null);
-    setView('list');
+    setView(previousView); // Voltar para a view anterior
   };
 
   const handleExportReport = async (dateFrom = '', dateTo = '') => {
@@ -388,12 +381,7 @@ export default function HomePage() {
             <h1 className="text-2xl font-bold">Helpdesk Tecassistiva</h1>
           </button>
           <div className="mt-8">
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <p className="text-lg font-semibold">{currentUser.name}</p>
-              {(currentUser.role === 'atendente' || currentUser.role === 'admin') && (
-                <OnlineToggle user={currentUser} />
-              )}
-            </div>
+            <p className="text-lg font-semibold">{currentUser.name}</p>
             <p className="text-sm text-indigo-300 capitalize">
               {currentUser.role === 'admin' ? 'Administrador' :
                 currentUser.role === 'atendente' ? 'Atendente' : 'Colaborador'}

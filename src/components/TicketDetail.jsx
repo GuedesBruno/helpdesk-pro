@@ -19,14 +19,14 @@ export default function TicketDetail({ ticket, user, onBack }) {
   const [selectedAttendant, setSelectedAttendant] = useState('');
   const [transferring, setTransferring] = useState(false);
 
-  // Permission checks
+  // Permission checks - Todos atendentes e admins podem editar qualquer chamado
   const canChangeStatus = user.role === 'admin' || user.role === 'atendente';
   const canDelete = user.role === 'admin' ||
     (user.role === 'colaborador' && ticket.createdBy.uid === user.uid);
   const canComment = true;
 
-  // Check if user is assigned attendant
-  const isAssignedAttendant = ticket.assignedTo && ticket.assignedTo.uid === user.uid;
+  // Qualquer atendente ou admin pode agir no chamado (não apenas o atribuído)
+  const canActOnTicket = user.role === 'admin' || user.role === 'atendente';
 
   // Translation helpers
   const getPriorityLabel = (priority) => {
@@ -57,22 +57,67 @@ export default function TicketDetail({ ticket, user, onBack }) {
     return () => unsubscribe();
   }, [ticket.id]);
 
-  // Atender chamado (queue -> started)
+  // Atender chamado (queue -> started) - Atribui ao atendente que iniciar
   const handleStartTicket = async () => {
-    await startTicket(ticket.id, user.uid);
-    setStatus('started');
+    try {
+      // Atribuir chamado ao atendente que está iniciando
+      const ticketRef = doc(db, 'tickets', ticket.id);
+      await updateDoc(ticketRef, {
+        status: 'started',
+        assignedTo: {
+          uid: user.uid,
+          name: user.name,
+          email: user.email
+        },
+        timeStarted: serverTimestamp(),
+        updatedAt: new Date()
+      });
 
-    // Notificar colaborador
-    await notifyTicketStarted(ticket, user, ticket.createdBy);
+      setStatus('started');
+
+      // Enviar notificação por email
+      await fetch('/api/notify-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'assigned',
+          ticket: {
+            ...ticket,
+            id: ticket.id,
+            status: 'started',
+            assignedTo: { uid: user.uid, name: user.name, email: user.email }
+          }
+        }),
+      });
+    } catch (error) {
+      console.error('Erro ao iniciar atendimento:', error);
+    }
   };
 
   // Colocar em análise (started -> analyzing)
   const handleSetAnalyzing = async () => {
-    await updateTicketStatus(ticket.id, 'analyzing');
-    setStatus('analyzing');
+    try {
+      const ticketRef = doc(db, 'tickets', ticket.id);
+      await updateDoc(ticketRef, {
+        status: 'analyzing',
+        updatedAt: new Date()
+      });
+      setStatus('analyzing');
 
-    // Notificar colaborador
-    await notifyStatusChange(ticket, 'analyzing', user, ticket.createdBy);
+      // Enviar notificação por email
+      await fetch('/api/notify-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'status_change',
+          ticket: { ...ticket, id: ticket.id, status: 'analyzing' },
+          previousStatus: status,
+          user
+        }),
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+    }
   };
 
   // Solicitar informação (analyzing -> waiting_user)
@@ -152,11 +197,27 @@ export default function TicketDetail({ ticket, user, onBack }) {
 
   // Resolver chamado (any -> resolved)
   const handleResolve = async () => {
-    await updateTicketStatus(ticket.id, 'resolved');
-    setStatus('resolved');
+    try {
+      const ticketRef = doc(db, 'tickets', ticket.id);
+      await updateDoc(ticketRef, {
+        status: 'resolved',
+        timeResolved: serverTimestamp(),
+        updatedAt: new Date()
+      });
+      setStatus('resolved');
 
-    // Notificar colaborador
-    await notifyStatusChange(ticket, 'resolved', user, ticket.createdBy);
+      // Enviar notificação por email
+      await fetch('/api/notify-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'resolved',
+          ticket: { ...ticket, id: ticket.id, status: 'resolved', timeResolved: new Date() }
+        }),
+      });
+    } catch (error) {
+      console.error('Erro ao resolver chamado:', error);
+    }
   };
 
   // Excluir chamado
@@ -204,11 +265,33 @@ export default function TicketDetail({ ticket, user, onBack }) {
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (newComment.trim() === '') return;
-    await addDoc(collection(db, 'tickets', ticket.id, 'comments'), {
-      text: newComment, createdAt: serverTimestamp(),
-      author: { uid: user.uid, name: user.name, role: user.role },
-    });
-    setNewComment('');
+
+    try {
+      await addDoc(collection(db, 'tickets', ticket.id, 'comments'), {
+        text: newComment,
+        createdAt: serverTimestamp(),
+        author: { uid: user.uid, name: user.name, role: user.role },
+      });
+
+      // Enviar notificação por email
+      await fetch('/api/notify-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'comment',
+          ticket: { ...ticket, id: ticket.id },
+          user,
+          comment: {
+            text: newComment,
+            author: { uid: user.uid, name: user.name, role: user.role }
+          }
+        }),
+      });
+
+      setNewComment('');
+    } catch (error) {
+      console.error('Erro ao adicionar comentário:', error);
+    }
   };
 
   // Status labels e cores
@@ -312,8 +395,8 @@ export default function TicketDetail({ ticket, user, onBack }) {
           </div>
         </div>
 
-        {/* Botões de Ação para Atendentes e Admin */}
-        {canChangeStatus && (isAssignedAttendant || (user.role === 'admin' && !ticket.assignedTo)) && (
+        {/* Botões de Ação para Atendentes e Admin - Todos podem editar */}
+        {canActOnTicket && (
           <div className="flex flex-wrap gap-2">
             {status === 'queue' && (
               <button onClick={handleStartTicket} className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700">
