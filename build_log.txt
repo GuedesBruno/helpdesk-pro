@@ -1,0 +1,126 @@
+
+> helpdesk-pro@0.1.0 build
+> next build
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+▲ Next.js 16.1.3 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+> Build error occurred
+Error: Turbopack build failed with 4 errors:
+./src/components/TicketDetail.jsx:7:1
+Module not found: Can't resolve 'date-fns'
+[0m [90m  5 |[39m [36mimport[39m { doc[33m,[39m updateDoc[33m,[39m arrayUnion[33m,[39m onSnapshot[33m,[39m serverTimestamp[33m,[39m deleteDoc[33m,[39m collection[33m,[39m addDoc } [36mfrom[39m [32m'firebase/firestore'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { [33mArrowLeft[39m[33m,[39m [33mClock[39m[33m,[39m [33mMessageSquare[39m[33m,[39m [33mCheckCircle[39m[33m,[39m [33mXCircle[39m[33m,[39m [33mPlay[39m[33m,[39m [33mPause[39m[33m,[39m [33mFileText[39m[33m,[39m [33mBox[39m[33m,[39m [33mTruck[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { format[33m,[39m addDays[33m,[39m differenceInDays } [36mfrom[39m [32m'date-fns'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { ptBR } [36mfrom[39m [32m'date-fns/locale'[39m[33m;[39m
+ [90m  9 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mTicketDetail[39m({
+ [90m 10 |[39m   ticket[33m,[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/TicketDetail.jsx [Client Component Browser]
+    ./src/app/page.js [Client Component Browser]
+    ./src/app/page.js [Server Component]
+
+  Client Component SSR:
+    ./src/components/TicketDetail.jsx [Client Component SSR]
+    ./src/app/page.js [Client Component SSR]
+    ./src/app/page.js [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/components/TicketDetail.jsx:6:1
+Module not found: Can't resolve 'date-fns'
+[0m [90m 4 |[39m [36mimport[39m { doc[33m,[39m updateDoc[33m,[39m arrayUnion[33m,[39m onSnapshot[33m,[39m serverTimestamp[33m,[39m deleteDoc[33m,[39m collection[33m,[39m addDoc } [36mfrom[39m [32m'firebase/firestore'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { [33mArrowLeft[39m[33m,[39m [33mClock[39m[33m,[39m [33mMessageSquare[39m[33m,[39m [33mCheckCircle[39m[33m,[39m [33mXCircle[39m[33m,[39m [33mPlay[39m[33m,[39m [33mPause[39m[33m,[39m [33mFileText[39m[33m,[39m [33mBox[39m[33m,[39m [33mTruck[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { format[33m,[39m addDays[33m,[39m differenceInDays } [36mfrom[39m [32m'date-fns'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { ptBR } [36mfrom[39m [32m'date-fns/locale'[39m[33m;[39m
+ [90m 8 |[39m
+ [90m 9 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mTicketDetail[39m({ ticket[33m,[39m user[33m,[39m onBack }) {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/TicketDetail.jsx [Client Component Browser]
+    ./src/app/page.js [Client Component Browser]
+    ./src/app/page.js [Server Component]
+
+  Client Component SSR:
+    ./src/components/TicketDetail.jsx [Client Component SSR]
+    ./src/app/page.js [Client Component SSR]
+    ./src/app/page.js [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/components/TicketDetail.jsx:8:1
+Module not found: Can't resolve 'date-fns/locale'
+[0m [90m  6 |[39m [36mimport[39m { [33mArrowLeft[39m[33m,[39m [33mClock[39m[33m,[39m [33mMessageSquare[39m[33m,[39m [33mCheckCircle[39m[33m,[39m [33mXCircle[39m[33m,[39m [33mPlay[39m[33m,[39m [33mPause[39m[33m,[39m [33mFileText[39m[33m,[39m [33mBox[39m[33m,[39m [33mTruck[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m
+ [90m  7 |[39m [36mimport[39m { format[33m,[39m addDays[33m,[39m differenceInDays } [36mfrom[39m [32m'date-fns'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  8 |[39m [36mimport[39m { ptBR } [36mfrom[39m [32m'date-fns/locale'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  9 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mTicketDetail[39m({
+ [90m 10 |[39m   ticket[33m,[39m
+ [90m 11 |[39m   user[33m,[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/TicketDetail.jsx [Client Component Browser]
+    ./src/app/page.js [Client Component Browser]
+    ./src/app/page.js [Server Component]
+
+  Client Component SSR:
+    ./src/components/TicketDetail.jsx [Client Component SSR]
+    ./src/app/page.js [Client Component SSR]
+    ./src/app/page.js [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/components/TicketDetail.jsx:7:1
+Module not found: Can't resolve 'date-fns/locale'
+[0m [90m  5 |[39m [36mimport[39m { [33mArrowLeft[39m[33m,[39m [33mClock[39m[33m,[39m [33mMessageSquare[39m[33m,[39m [33mCheckCircle[39m[33m,[39m [33mXCircle[39m[33m,[39m [33mPlay[39m[33m,[39m [33mPause[39m[33m,[39m [33mFileText[39m[33m,[39m [33mBox[39m[33m,[39m [33mTruck[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { format[33m,[39m addDays[33m,[39m differenceInDays } [36mfrom[39m [32m'date-fns'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { ptBR } [36mfrom[39m [32m'date-fns/locale'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m
+ [90m  9 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mTicketDetail[39m({ ticket[33m,[39m user[33m,[39m onBack }) {
+ [90m 10 |[39m   [36mconst[39m [comments[33m,[39m setComments] [33m=[39m useState([])[33m;[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/TicketDetail.jsx [Client Component Browser]
+    ./src/app/page.js [Client Component Browser]
+    ./src/app/page.js [Server Component]
+
+  Client Component SSR:
+    ./src/components/TicketDetail.jsx [Client Component SSR]
+    ./src/app/page.js [Client Component SSR]
+    ./src/app/page.js [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./src/components/TicketDetail.jsx:7:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/components/TicketDetail.jsx:6:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/components/TicketDetail.jsx:8:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/components/TicketDetail.jsx:7:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)

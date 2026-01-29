@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDoc } from 'firebase/firestore';
-import { Users, Mail, Trash2, X, Loader2, Edit } from 'lucide-react';
+import { Mail, Trash2, X, Loader2, Edit } from 'lucide-react';
 
 export default function UserManagement({ onBack }) {
     console.log('🔄 UserManagement component loaded - Version 2.0');

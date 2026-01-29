@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, arrayUnion, onSnapshot, serverTimestamp, deleteDoc, collection, addDoc } from 'firebase/firestore';
-import { ArrowLeft, Clock, User, MessageSquare, CheckCircle, XCircle, Play, Pause, AlertCircle, FileText, Calendar, MapPin, Box, Truck, UserPlus, Search, Send, Trash2, X, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Clock, MessageSquare, CheckCircle, XCircle, Play, Pause, FileText, Box, Truck } from 'lucide-react';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 

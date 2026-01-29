@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { db, auth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { Plus, LogOut, Download, Loader2, Users, Building2, Menu, X, CheckCircle, Settings, Tag, Package, FileText, AlertTriangle } from 'lucide-react';
+import { Plus, LogOut, Download, Loader2, Users, Building2, Menu, X, CheckCircle, Tag, Package, FileText, AlertTriangle } from 'lucide-react';
 import AuthScreen from '@/components/AuthScreen';
 import TicketCard from '@/components/TicketCard';
 import TicketDetail from '@/components/TicketDetail';

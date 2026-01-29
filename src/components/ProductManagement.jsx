@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, onSnapshot, doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { Package, Plus, Edit2, Trash2, X, Check, AlertCircle, Loader2, Search } from 'lucide-react';
+import { Package, Plus, Edit2, Trash2, X, AlertCircle, Loader2, Search } from 'lucide-react';
 
 export default function ProductManagement({ onBack }) {
     const [products, setProducts] = useState([]);

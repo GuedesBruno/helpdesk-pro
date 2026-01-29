@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, onSnapshot, doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { Tag, Plus, Edit2, Trash2, X, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Loader2, AlertCircle, Tag } from 'lucide-react';
 
 export default function CategoryManagement({ onBack }) {
     const [categories, setCategories] = useState([]);
