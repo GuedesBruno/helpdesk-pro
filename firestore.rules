@@ -19,8 +19,16 @@ service cloud.firestore {
       return isAuthenticated() && getUserRole() == 'atendente';
     }
     
+    function isColaboradorAtendente() {
+      return isAuthenticated() && getUserRole() == 'colaborador_atendente';
+    }
+    
     function isGerente() {
       return isAuthenticated() && getUserRole() == 'gerente';
+    }
+    
+    function isColaborador() {
+      return isAuthenticated() && getUserRole() == 'colaborador';
     }
     
     function getUserDepartment() {
@@ -78,11 +86,13 @@ service cloud.firestore {
     match /tickets/{ticketId} {
       // Read permissions:
       // - Admin and Atendente can read all tickets
+      // - Colaborador/Atendente can read all tickets (for attendance)
       // - Gerente can read tickets from their department
       // - Colaborador can only read their own tickets
       allow read: if isAuthenticated() && (
         isAdmin() ||
         isAtendente() ||
+        isColaboradorAtendente() ||
         (isGerente() && resource.data.department == getUserDepartment()) ||
         (isColaborador() && resource.data.createdBy.uid == request.auth.uid)
       );
@@ -92,6 +102,7 @@ service cloud.firestore {
       
       // Update permissions:
       // - Admin and Atendente can update any ticket
+      // - Colaborador/Atendente can update any ticket (for attendance)
       // - Gerente can update tickets from their department (add usage notes/comments)
       // - Colaborador can only update their own tickets AND cannot change status
       //   EXCEPT: Can change from waiting_user to analyzing (when responding)
@@ -99,6 +110,7 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (
         isAdmin() ||
         isAtendente() ||
+        isColaboradorAtendente() ||
         (isGerente() && resource.data.department == getUserDepartment()) ||
         (isColaborador() && 
          resource.data.createdBy.uid == request.auth.uid && (

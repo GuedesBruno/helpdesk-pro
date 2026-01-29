@@ -216,7 +216,8 @@ export default function UserManagement({ onBack }) {
             admin: 'Administrador',
             atendente: 'Atendente',
             gerente: 'Gerente / Gestor',
-            colaborador: 'Colaborador'
+            colaborador: 'Colaborador',
+            colaborador_atendente: 'Colaborador/Atendente'
         };
         return labels[role] || role;
     };
@@ -226,7 +227,8 @@ export default function UserManagement({ onBack }) {
             admin: 'bg-red-100 text-red-800',
             atendente: 'bg-blue-100 text-blue-800',
             gerente: 'bg-indigo-100 text-indigo-800',
-            colaborador: 'bg-gray-100 text-gray-800'
+            colaborador: 'bg-gray-100 text-gray-800',
+            colaborador_atendente: 'bg-purple-100 text-purple-800'
         };
         return colors[role] || 'bg-gray-100 text-gray-800';
     };
@@ -369,6 +371,7 @@ export default function UserManagement({ onBack }) {
                                     className="w-full px-3 py-2 border rounded-md border-gray-300 focus:outline-none focus:ring-1 focus:ring-tec-blue"
                                 >
                                     <option value="colaborador">Colaborador</option>
+                                    <option value="colaborador_atendente">Colaborador/Atendente</option>
                                     <option value="gerente">Gerente / Gestor</option>
                                     <option value="atendente">Atendente</option>
                                     <option value="admin">Administrador</option>
@@ -483,6 +486,7 @@ export default function UserManagement({ onBack }) {
                                     required
                                 >
                                     <option value="colaborador">Colaborador</option>
+                                    <option value="colaborador_atendente">Colaborador/Atendente</option>
                                     <option value="gerente">Gerente / Gestor</option>
                                     <option value="atendente">Atendente</option>
                                     <option value="admin">Administrador</option>

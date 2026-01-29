@@ -37,7 +37,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
   });
 
   // Permissions
-  const canActOnTicket = ['admin', 'atendente', 'gerente', 'financeiro'].includes(user.role);
+  const canActOnTicket = ['admin', 'atendente', 'gerente', 'financeiro', 'colaborador_atendente'].includes(user.role);
   const isFinance = user.role === 'admin' || user.department === 'financeiro' || user.role === 'financeiro'; // Logic to identify finance users
 
   // Load comments

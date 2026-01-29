@@ -65,7 +65,7 @@ export default function HomePage() {
         q = query(ticketsRef, where('status', '==', 'resolved'), orderBy('createdAt', 'desc'));
       } else if (currentUser.role === 'gerente') {
         q = query(ticketsRef, where('status', '==', 'resolved'), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
-      } else if (currentUser.role === 'atendente') {
+      } else if (currentUser.role === 'atendente' || currentUser.role === 'colaborador_atendente') {
         q = query(ticketsRef, where('status', '==', 'resolved'), orderBy('createdAt', 'desc'));
       } else {
         q = query(ticketsRef, where('status', '==', 'resolved'), where('createdBy.uid', '==', currentUser.uid), orderBy('createdAt', 'desc'));
@@ -80,6 +80,9 @@ export default function HomePage() {
         q = query(ticketsRef, where('status', '!=', 'resolved'), where('department', '==', currentUser.department), orderBy('status'), orderBy('createdAt', 'desc'));
       } else if (currentUser.role === 'atendente') {
         q = query(ticketsRef, where('status', '!=', 'resolved'), orderBy('status'), orderBy('createdAt', 'desc'));
+      } else if (currentUser.role === 'colaborador_atendente') {
+        // Hybrid role: see department tickets for attendance + own tickets
+        q = query(ticketsRef, where('status', '!=', 'resolved'), orderBy('status'), orderBy('createdAt', 'desc'));
       } else {
         q = query(ticketsRef, where('status', '!=', 'resolved'), where('createdBy.uid', '==', currentUser.uid), orderBy('status'), orderBy('createdAt', 'desc'));
       }
@@ -93,9 +96,9 @@ export default function HomePage() {
         ...doc.data()
       }));
 
-      // Client-side filtering for finance department attendants
+      // Client-side filtering for finance department attendants and colaborador_atendente
       // Finance attendants should only see equipment separation tickets
-      if (currentUser.role === 'atendente' && currentUser.department === 'financeiro') {
+      if ((currentUser.role === 'atendente' || currentUser.role === 'colaborador_atendente') && currentUser.department === 'financeiro') {
         docs = docs.filter(ticket => ticket.categoryType === 'equipment_separation');
       }
 
@@ -111,6 +114,14 @@ export default function HomePage() {
     return () => unsubscribe();
   }, [currentUser, view]);
 
+  // Permission helpers
+  const canViewFinance = currentUser && (
+    currentUser.role === 'admin' ||
+    (currentUser.role === 'gerente' && currentUser.department === 'financeiro') ||
+    (currentUser.role === 'atendente' && currentUser.department === 'financeiro') ||
+    (currentUser.role === 'colaborador_atendente' && currentUser.department === 'financeiro')
+  );
+
   const handleSignOut = () => signOut(auth);
 
   const handleTicketClick = (ticket) => {
@@ -125,10 +136,12 @@ export default function HomePage() {
   };
 
   const exportToCSV = () => {
-    // CSV Export specifically for Finance view
+    let headers, rows, filename;
+
     if (view === 'finance_control') {
-      const headers = ['ID Chamado', 'Assunto', 'Solicitante', 'Departamento', 'Data Solicitação', 'Produto Código', 'Produto Nome', 'Número de Série'];
-      const rows = [];
+      // Finance-specific export with product details
+      headers = ['ID Chamado', 'Assunto', 'Solicitante', 'Departamento', 'Data Solicitação', 'Produto Código', 'Produto Nome', 'Número de Série'];
+      rows = [];
 
       tickets.forEach(t => {
         if (t.products && t.products.length > 0) {
@@ -148,19 +161,36 @@ export default function HomePage() {
           rows.push([t.id, `"${t.subject}"`, t.createdBy?.name || '', t.departmentName || '', t.createdAt?.toDate ? t.createdAt.toDate().toLocaleDateString() : '', '-', '-', '-']);
         }
       });
-
-      const csvContent = "data:text/csv;charset=utf-8,"
-        + headers.join(",") + "\n"
-        + rows.map(e => e.join(",")).join("\n");
-
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `emissao_nf_${new Date().toISOString().slice(0, 10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      filename = `emissao_nf_${new Date().toISOString().slice(0, 10)}.csv`;
+    } else {
+      // General export for list and resolved views
+      headers = ['ID', 'Assunto', 'Status', 'Prioridade', 'Departamento', 'Solicitante', 'Atendente', 'Data Criação', 'Data Resolução'];
+      rows = tickets.map(t => [
+        t.id,
+        `"${t.subject}"`,
+        t.status,
+        t.priority || 'medium',
+        t.departmentName || '',
+        t.createdBy?.name || '',
+        t.assignedTo?.name || 'Não atribuído',
+        t.createdAt?.toDate ? t.createdAt.toDate().toLocaleDateString() : '',
+        t.timeResolved?.toDate ? t.timeResolved.toDate().toLocaleDateString() : ''
+      ]);
+      filename = `chamados_${view}_${new Date().toISOString().slice(0, 10)}.csv`;
     }
+
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + headers.join(",") + "\n"
+      + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setShowExportModal(false);
   };
 
   if (loading) {
@@ -174,9 +204,6 @@ export default function HomePage() {
   if (!currentUser) {
     return <AuthScreen />;
   }
-
-  // Permissões para ver menu Financeiro
-  const canViewFinance = ['admin', 'atendente', 'gerente'].includes(currentUser.role); // Simplificando acesso
 
   return (
     <div className="flex min-h-screen bg-slate-100">
@@ -432,13 +459,18 @@ export default function HomePage() {
         {view === 'products' && <ProductManagement onBack={handleBackToList} />}
       </main>
 
-      {/* Export Modal (Original) - Keep it or remove if replaced by Finance export? keeping for general export */}
+      {/* Export Modal */}
       {showExportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
             <h3 className="text-lg font-bold mb-4">Exportar Chamados</h3>
-            <p className="text-slate-600 mb-6">Funcionalidade de exportação geral em construção.</p>
-            <button onClick={() => setShowExportModal(false)} className="w-full py-2 bg-gray-200 rounded-md">Fechar</button>
+            <p className="text-slate-600 mb-6">
+              Deseja exportar os chamados da visualização atual ({view === 'list' ? 'Abertos' : view === 'resolved' ? 'Resolvidos' : 'Controle de NFs'}) para CSV?
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowExportModal(false)} className="flex-1 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Cancelar</button>
+              <button onClick={exportToCSV} className="flex-1 py-2 bg-tec-blue text-white rounded-md hover:bg-tec-blue-light">Exportar</button>
+            </div>
           </div>
         </div>
       )}
