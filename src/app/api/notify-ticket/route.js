@@ -36,6 +36,8 @@ export async function POST(request) {
       started: 'Iniciado',
       analyzing: 'Em Análise',
       waiting_user: 'Aguardando Retorno',
+      waiting_nf: 'Aguardando Emissão de NF',
+      nf_emitted: 'NF Emitida / Em Trânsito',
       resolved: 'Resolvido',
       canceled: 'Cancelado'
     };

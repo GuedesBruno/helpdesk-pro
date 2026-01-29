@@ -88,12 +88,17 @@ export default function HomePage() {
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({
+      let docs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      // Client-side filtering if needed (e.g. for composite index issues during dev)
-      // For now, assume indexes are built or queries are simple enough
+
+      // Client-side filtering for finance department attendants
+      // Finance attendants should only see equipment separation tickets
+      if (currentUser.role === 'atendente' && currentUser.department === 'financeiro') {
+        docs = docs.filter(ticket => ticket.categoryType === 'equipment_separation');
+      }
+
       setTickets(docs);
     }, (error) => {
       console.error("Error fetching tickets:", error);
