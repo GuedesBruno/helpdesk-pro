@@ -310,7 +310,7 @@ export default function HomePage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {tickets.length > 0 ? (
                 tickets.map(ticket => (
-                  <TicketCard key={ticket.id} ticket={ticket} onClick={handleTicketClick} />
+                  <TicketCard key={ticket.id} ticket={ticket} onClick={() => handleTicketClick(ticket)} />
                 ))
               ) : (
                 <div className="col-span-full py-12 text-center text-slate-500 bg-white rounded-lg shadow-sm">
@@ -328,7 +328,7 @@ export default function HomePage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {tickets.length > 0 ? (
                 tickets.map(ticket => (
-                  <TicketCard key={ticket.id} ticket={ticket} onClick={handleTicketClick} />
+                  <TicketCard key={ticket.id} ticket={ticket} onClick={() => handleTicketClick(ticket)} />
                 ))
               ) : (
                 <div className="col-span-full py-12 text-center text-slate-500 bg-white rounded-lg shadow-sm">

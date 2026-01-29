@@ -325,7 +325,7 @@ export default function NewTicketForm({ user, onTicketCreated }) {
                     <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-md hover:bg-white transition-colors bg-white">
                       <input type="radio" name="transport" value="car" checked={transportType === 'car'} onChange={(e) => setTransportType(e.target.value)} className="text-tec-blue" />
                       <Car className="w-5 h-5 text-slate-600" />
-                      <span>Carro da Empresa</span>
+                      <span>Carro</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-md hover:bg-white transition-colors bg-white">
                       <input type="radio" name="transport" value="plane" checked={transportType === 'plane'} onChange={(e) => setTransportType(e.target.value)} className="text-tec-blue" />
