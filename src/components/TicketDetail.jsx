@@ -252,7 +252,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
   const showReturnNF = status === 'nf_emitted' && isFinance;
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow-xl overflow-hidden animate-in slide-in-from-right duration-300">
+    <div className="flex flex-col h-full bg-white rounded-lg shadow-xl overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b bg-slate-50">
         <div className="flex items-center gap-4">
@@ -275,9 +275,9 @@ export default function TicketDetail({ ticket, user, onBack }) {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden">
         {/* Main Content */}
-        <div className="flex-1 p-6 overflow-y-auto border-r custom-scrollbar">
+        <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
 
           {/* Equipment/Travel Info */}
           {isSeparationTicket && ticket.meetingInfo && (
@@ -396,36 +396,33 @@ export default function TicketDetail({ ticket, user, onBack }) {
           </div>
         </div>
 
-        {/* Sidebar Actions */}
-        <div className="w-72 bg-slate-50 p-6 border-l hidden md:block animate-in slide-in-from-right-8 duration-500">
-          <h4 className="font-bold text-slate-700 mb-4 uppercase text-xs tracking-wider">Ações</h4>
-          <div className="space-y-3">
-            {/* Finance Buttons */}
-            {showEmitNF && (
-              <button onClick={() => setShowEmitNFModal(true)} disabled={loading} className="w-full flex items-center gap-2 px-3 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 transition-colors text-sm font-medium shadow-sm">
-                <FileText className="w-4 h-4" /> Registrar Emissão de NF
-              </button>
-            )}
-            {showReturnNF && (
-              <button onClick={handleReturnNF} disabled={loading} className="w-full flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm">
-                <CheckCircle className="w-4 h-4" /> Registrar Devolução
-              </button>
-            )}
+        {/* Actions Footer - Replaces Sidebar */}
+        <div className="p-4 bg-slate-50 border-t flex flex-wrap items-center justify-end gap-3">
+          {/* Finance Buttons */}
+          {showEmitNF && (
+            <button onClick={() => setShowEmitNFModal(true)} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 transition-colors text-sm font-medium shadow-sm">
+              <FileText className="w-4 h-4" /> Registrar Emissão de NF
+            </button>
+          )}
+          {showReturnNF && (
+            <button onClick={handleReturnNF} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm">
+              <CheckCircle className="w-4 h-4" /> Registrar Devolução
+            </button>
+          )}
 
-            {/* Standard Buttons (Hide if in Finance workflow special status) */}
-            {!isSeparationTicket && canActOnTicket && status !== 'resolved' && status !== 'canceled' && (
-              <>
-                {status === 'queue' && <button onClick={() => handleStatusChange('started')} disabled={loading} className="w-full flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"><Play className="w-4 h-4" /> Iniciar Atendimento</button>}
-                {(status === 'started' || status === 'analyzing') && <button onClick={() => handleStatusChange('waiting_user')} disabled={loading} className="w-full flex items-center gap-2 px-3 py-2 bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors text-sm font-medium"><Pause className="w-4 h-4" /> Aguardar Usuário</button>}
-                {status === 'waiting_user' && <button onClick={() => handleStatusChange('analyzing')} disabled={loading} className="w-full flex items-center gap-2 px-3 py-2 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors text-sm font-medium"><Play className="w-4 h-4" /> Retomar Análise</button>}
-                <button onClick={() => handleStatusChange('resolved')} disabled={loading} className="w-full flex items-center gap-2 px-3 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"><CheckCircle className="w-4 h-4" /> Resolver Chamado</button>
-              </>
-            )}
-            {/* Allow Cancel generally */}
-            {canActOnTicket && status !== 'resolved' && status !== 'canceled' && (
-              <button onClick={() => { if (confirm('Tem certeza que deseja cancelar?')) handleStatusChange('canceled'); }} disabled={loading} className="w-full flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"><XCircle className="w-4 h-4" /> Cancelar Chamado</button>
-            )}
-          </div>
+          {/* Standard Buttons */}
+          {!isSeparationTicket && canActOnTicket && status !== 'resolved' && status !== 'canceled' && (
+            <>
+              {status === 'queue' && <button onClick={() => handleStatusChange('started')} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"><Play className="w-4 h-4" /> Iniciar Atendimento</button>}
+              {(status === 'started' || status === 'analyzing') && <button onClick={() => handleStatusChange('waiting_user')} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors text-sm font-medium"><Pause className="w-4 h-4" /> Aguardar Usuário</button>}
+              {status === 'waiting_user' && <button onClick={() => handleStatusChange('analyzing')} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors text-sm font-medium"><Play className="w-4 h-4" /> Retomar Análise</button>}
+              <button onClick={() => handleStatusChange('resolved')} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"><CheckCircle className="w-4 h-4" /> Resolver Chamado</button>
+            </>
+          )}
+          {/* Allow Cancel generally */}
+          {canActOnTicket && status !== 'resolved' && status !== 'canceled' && (
+            <button onClick={() => { if (confirm('Tem certeza que deseja cancelar?')) handleStatusChange('canceled'); }} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"><XCircle className="w-4 h-4" /> Cancelar Chamado</button>
+          )}
         </div>
       </div>
 
