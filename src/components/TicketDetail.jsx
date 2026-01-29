@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, arrayUnion, onSnapshot, serverTimestamp, deleteDoc, collection, addDoc } from 'firebase/firestore';
 import { ArrowLeft, Clock, MessageSquare, CheckCircle, XCircle, Play, Pause, FileText, Box, Truck } from 'lucide-react';
+import ConfirmationModal from './ConfirmationModal';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -24,6 +25,16 @@ export default function TicketDetail({ ticket, user, onBack }) {
   // NF Workflow States
   const [showEmitNFModal, setShowEmitNFModal] = useState(false);
   const [nfData, setNfData] = useState({ number: '', issueDate: '' });
+
+  // Generic Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+    variant: 'primary',
+    confirmText: 'Confirmar'
+  });
 
   // Permissions
   const canActOnTicket = ['admin', 'atendente', 'gerente', 'financeiro'].includes(user.role);
@@ -123,7 +134,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
       await updateDoc(ticketRef, {
         products: updatedProducts,
         separationConfirmed: true,
-        status: isInternal ? 'resolved' : 'waiting_user',
+        status: isInternal ? 'resolved' : 'waiting_user', // Manually wait for user request
         ...(isInternal ? { timeResolved: serverTimestamp() } : {})
       });
 
@@ -135,13 +146,14 @@ export default function TicketDetail({ ticket, user, onBack }) {
         author: { uid: 'system', name: 'Sistema', role: 'admin' }
       };
       await updateDoc(ticketRef, { comments: arrayUnion(systemComment) });
+
       setShowSeparationModal(false);
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  const handleRequestNF = async () => {
-    if (!confirm('Solicitar emissão da Nota Fiscal?')) return;
+  const executeRequestNF = async () => {
     setLoading(true);
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
     try {
       await updateDoc(doc(db, 'tickets', ticket.id), { status: 'waiting_nf' });
       await fetch('/api/notify-ticket', {
@@ -151,6 +163,19 @@ export default function TicketDetail({ ticket, user, onBack }) {
       });
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
+
+  const handleRequestNF = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Solicitar Emissão de NF',
+      message: 'Confirma a solicitação de emissão da Nota Fiscal para este chamado?',
+      variant: 'primary',
+      confirmText: 'Solicitar',
+      onConfirm: executeRequestNF
+    });
+  };
+
+  // handleRequestNF removed as it is now automatic
 
   // --- Finance Workflow Logic ---
   const handleEmitNF = async () => {
@@ -195,9 +220,9 @@ export default function TicketDetail({ ticket, user, onBack }) {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  const handleReturnNF = async () => {
-    if (!confirm('Confirmar o retorno da Nota Fiscal e dos equipamentos? Isso finalizará o chamado.')) return;
+  const executeReturnNF = async () => {
     setLoading(true);
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
     try {
       await updateDoc(doc(db, 'tickets', ticket.id), {
         status: 'resolved',
@@ -215,6 +240,17 @@ export default function TicketDetail({ ticket, user, onBack }) {
         }),
       });
     } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const handleReturnNF = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Confirmar Devolução',
+      message: 'Confirmar o retorno da Nota Fiscal e dos equipamentos? Isso finalizará o chamado.',
+      variant: 'primary',
+      confirmText: 'Confirmar e Finalizar',
+      onConfirm: executeReturnNF
+    });
   };
 
   const getStatusBadge = (s) => {
@@ -243,7 +279,11 @@ export default function TicketDetail({ ticket, user, onBack }) {
 
   const isSeparationTicket = ticket.categoryType === 'equipment_separation';
   const showSeparationActions = isSeparationTicket && canActOnTicket && !ticket.separationConfirmed && status !== 'resolved';
-  const showRequestNF = isSeparationTicket && user.role === 'colaborador' && ticket.separationConfirmed && status === 'waiting_user';
+
+  const showRequestNF = isSeparationTicket &&
+    (['colaborador', 'admin', 'gerente'].includes(user.role)) &&
+    ticket.separationConfirmed &&
+    status === 'waiting_user';
 
   // Finance Actions
   // waiting_nf -> can emit NF
@@ -354,6 +394,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
             </div>
           )}
 
+
           {/* Action Bunttons for Flows */}
           {showRequestNF && (
             <div className="mb-8 p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-center justify-between">
@@ -421,7 +462,23 @@ export default function TicketDetail({ ticket, user, onBack }) {
           )}
           {/* Allow Cancel generally */}
           {canActOnTicket && status !== 'resolved' && status !== 'canceled' && (
-            <button onClick={() => { if (confirm('Tem certeza que deseja cancelar?')) handleStatusChange('canceled'); }} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"><XCircle className="w-4 h-4" /> Cancelar Chamado</button>
+            <button
+              onClick={() => setConfirmModal({
+                isOpen: true,
+                title: 'Cancelar Chamado',
+                message: 'Tem certeza que deseja cancelar este chamado? Esta ação não pode ser desfeita.',
+                variant: 'danger',
+                confirmText: 'Sim, Cancelar',
+                onConfirm: async () => {
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                  await handleStatusChange('canceled');
+                }
+              })}
+              disabled={loading}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"
+            >
+              <XCircle className="w-4 h-4" /> Cancelar Chamado
+            </button>
           )}
         </div>
       </div>
@@ -462,6 +519,16 @@ export default function TicketDetail({ ticket, user, onBack }) {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        confirmText={confirmModal.confirmText}
+      />
     </div>
   );
 }
