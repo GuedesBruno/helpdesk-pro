@@ -21,6 +21,8 @@ export default function HomePage() {
   const [tickets, setTickets] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const TECASSISTIVA_LOGO_URL = "https://tecassistiva.com.br/wp-content/uploads/2022/02/Logo-Tecassistiva.png";
+
   // Modals
   const [showExportModal, setShowExportModal] = useState(false);
 
@@ -183,18 +185,24 @@ export default function HomePage() {
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out
+        fixed lg:static inset-y-0 left-0 z-30 w-64 bg-tec-blue shadow-xl transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="flex flex-col h-full">
-          <div className="p-6 border-b">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-tec-blue to-blue-800 bg-clip-text text-transparent">
-              HelpDesk Pro
+        <div className="flex flex-col h-full text-white">
+          <div className="p-6 border-b border-blue-800">
+            <div className="flex items-center gap-2 mb-4">
+              {/* Logo Image */}
+              <div className="bg-white p-2 rounded-lg">
+                <img src={TECASSISTIVA_LOGO_URL} alt="Tecassistiva" className="h-8 w-auto" />
+              </div>
+            </div>
+            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">
+              Helpdesk Tecassistiva
             </h1>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-blue-100">
               Olá, {currentUser.name?.split(' ')[0]}
             </p>
-            <span className="inline-block px-2 py-1 mt-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded-full capitalize">
+            <span className="inline-block px-2 py-1 mt-1 text-xs font-semibold text-blue-900 bg-blue-100 rounded-full capitalize">
               {currentUser.role === 'gerente' ? 'Gerente / Gestor' : currentUser.role}
             </span>
           </div>
@@ -203,7 +211,7 @@ export default function HomePage() {
             <button
               onClick={() => { setView('list'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 font-semibold transition-colors rounded-md
-                ${view === 'list' ? 'bg-tec-blue text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
+                ${view === 'list' ? 'bg-white text-tec-blue shadow-md' : 'text-blue-100 hover:bg-blue-800'}`}
             >
               <Users className="w-5 h-5" />
               {currentUser.role === 'gerente' ? 'Chamados do Depto.' : 'Meus Chamados'}
@@ -212,7 +220,7 @@ export default function HomePage() {
             <button
               onClick={() => { setView('resolved'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 font-semibold transition-colors rounded-md
-                ${view === 'resolved' ? 'bg-tec-blue text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
+                ${view === 'resolved' ? 'bg-white text-tec-blue shadow-md' : 'text-blue-100 hover:bg-blue-800'}`}
             >
               <CheckCircle className="w-5 h-5" />
               {currentUser.role === 'gerente' ? 'Resolvidos do Depto.' : 'Resolvidos'}
@@ -223,7 +231,7 @@ export default function HomePage() {
               <button
                 onClick={() => { setView('finance_control'); setIsSidebarOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 font-semibold transition-colors rounded-md
-                        ${view === 'finance_control' ? 'bg-tec-blue text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
+                        ${view === 'finance_control' ? 'bg-white text-tec-blue shadow-md' : 'text-blue-100 hover:bg-blue-800'}`}
               >
                 <FileText className="w-5 h-5" />
                 Controle de NFs
@@ -233,22 +241,22 @@ export default function HomePage() {
 
             {currentUser.role === 'admin' && (
               <>
-                <div className="mt-4 mb-2 px-4 text-xs font-semibold text-blue-200 uppercase tracking-wider">
+                <div className="mt-4 mb-2 px-4 text-xs font-bold text-blue-200 uppercase tracking-wider">
                   Gerenciamento
                 </div>
-                <button onClick={() => setShowExportModal(true)} className="w-full flex items-center gap-3 px-4 py-2 font-semibold text-tec-gray-dark transition-colors bg-tec-gray-light rounded-md hover:bg-gray-300">
+                <button onClick={() => setShowExportModal(true)} className="w-full flex items-center gap-3 px-4 py-2 font-semibold text-blue-100 transition-colors hover:bg-blue-800 rounded-md">
                   <Download className="w-5 h-5" /> Exportar Geral
                 </button>
-                <button onClick={() => setView('users')} className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md ${view === 'users' ? 'bg-blue-800 text-white' : 'text-tec-gray-dark bg-tec-gray-light hover:bg-gray-300'}`}>
+                <button onClick={() => setView('users')} className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md ${view === 'users' ? 'bg-white text-tec-blue' : 'text-blue-100 hover:bg-blue-800'}`}>
                   <Users className="w-5 h-5" /> Usuários
                 </button>
-                <button onClick={() => setView('departments')} className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md ${view === 'departments' ? 'bg-blue-800 text-white' : 'text-tec-gray-dark bg-tec-gray-light hover:bg-gray-300'}`}>
+                <button onClick={() => setView('departments')} className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md ${view === 'departments' ? 'bg-white text-tec-blue' : 'text-blue-100 hover:bg-blue-800'}`}>
                   <Building2 className="w-5 h-5" /> Departamentos
                 </button>
-                <button onClick={() => setView('categories')} className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md ${view === 'categories' ? 'bg-blue-800 text-white' : 'text-tec-gray-dark bg-tec-gray-light hover:bg-gray-300'}`}>
+                <button onClick={() => setView('categories')} className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md ${view === 'categories' ? 'bg-white text-tec-blue' : 'text-blue-100 hover:bg-blue-800'}`}>
                   <Tag className="w-5 h-5" /> Categorias
                 </button>
-                <button onClick={() => setView('products')} className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md ${view === 'products' ? 'bg-blue-800 text-white' : 'text-tec-gray-dark bg-tec-gray-light hover:bg-gray-300'}`}>
+                <button onClick={() => setView('products')} className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md ${view === 'products' ? 'bg-white text-tec-blue' : 'text-blue-100 hover:bg-blue-800'}`}>
                   <Package className="w-5 h-5" /> Produtos
                 </button>
               </>
@@ -258,7 +266,7 @@ export default function HomePage() {
           <div className="p-4 border-t bg-slate-50">
             <button
               onClick={handleSignOut}
-              className="flex items-center justify-center w-full gap-2 px-4 py-2 text-sm font-semibold text-red-600 transition-colors border border-red-200 rounded-md hover:bg-red-50"
+              className="flex items-center justify-center w-full gap-2 px-4 py-2 text-sm font-semibold text-red-100 transition-colors border border-red-400 rounded-md hover:bg-red-700 bg-red-600 bg-opacity-80"
             >
               <LogOut className="w-4 h-4" /> Sair do Sistema
             </button>
