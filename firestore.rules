@@ -131,5 +131,23 @@ service cloud.firestore {
           resource.data.author.uid == request.auth.uid;
       }
     }
+
+    // Categories collection
+    match /categories/{categoryId} {
+      // Authenticated users can read categories (to select in form)
+      allow read: if isAuthenticated();
+      
+      // Only admins can manage categories
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Products collection
+    match /products/{productId} {
+      // Authenticated users can read products (to select in form)
+      allow read: if isAuthenticated();
+      
+      // Only admins can manage products
+      allow create, update, delete: if isAdmin();
+    }
   }
 }

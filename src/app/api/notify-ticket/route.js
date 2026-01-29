@@ -22,6 +22,7 @@ export async function POST(request) {
     }
 
     const supportEmail = 'suporte@tecassistiva.com.br';
+    const financeEmail = 'administrativo1@tecassistiva.com.br';
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <onboarding@resend.dev>';
 
     console.log('📧 [EMAIL API] From Email:', fromEmail);
@@ -165,6 +166,59 @@ export async function POST(request) {
         `, 'Verificar Solução');
         break;
 
+      case 'nf_request':
+        subject = `📄 Solicitação de Emissão de NF: ${ticket.subject}`;
+        emailHtml = baseTemplate('Solicitação de Nota Fiscal', `
+          <p style="color: #374151; font-size: 16px;">
+            Foi solicitada a emissão de Nota Fiscal para o chamado abaixo.
+          </p>
+          ${ticketInfo}
+          <div style="background: #fce7f3; padding: 15px; border-radius: 6px; border-left: 4px solid #db2777;">
+            <p style="margin: 0;"><strong>Ação Necessária:</strong></p>
+            <p style="margin: 10px 0 0 0;">Verifique os dados dos produtos e emita a NF. Após a emissão, finalize o chamado no sistema.</p>
+          </div>
+        `, 'Acessar para Emitir NF');
+        break;
+
+      case 'nf_emitted':
+        subject = `🧾 Nota Fiscal Emitida: ${ticket.subject}`;
+        const returnDate = ticket.nfReturnDeadline
+          ? new Date(ticket.nfReturnDeadline).toLocaleDateString('pt-BR')
+          : 'N/A';
+
+        emailHtml = baseTemplate('Nota Fiscal Emitida', `
+          <p style="color: #374151; font-size: 16px;">
+            A Nota Fiscal foi emitida e seus equipamentos estão liberados para viagem.
+          </p>
+          ${ticketInfo}
+          <div style="background: #e0e7ff; padding: 15px; border-radius: 6px; border-left: 4px solid #4f46e5;">
+            <p style="margin: 0;"><strong>Dados da Emissão:</strong></p>
+            <p style="margin: 5px 0;"><strong>NF Número:</strong> ${ticket.nfNumber}</p>
+            <p style="margin: 5px 0 0 0;"><strong>Prazo Limite para Retorno:</strong> ${returnDate}</p>
+          </div>
+          <p style="margin-top: 15px; font-size: 14px; color: #6b7280;">
+             Fique atento ao prazo de retorno (90 dias) para evitar problemas fiscais.
+          </p>
+        `, 'Acompanhar Chamado');
+        break;
+
+      case 'nf_returned':
+        subject = `↩️ NF Devolvida / Chamado Resolvido: ${ticket.subject}`;
+        const returnDateVal = new Date().toLocaleDateString('pt-BR');
+
+        emailHtml = baseTemplate('Nota Fiscal Devolvida', `
+          <p style="color: #374151; font-size: 16px;">
+            A devolução da Nota Fiscal foi registrada e o chamado foi concluído.
+          </p>
+          ${ticketInfo}
+           <div style="background: #e0e7ff; padding: 15px; border-radius: 6px; border-left: 4px solid #4f46e5;">
+            <p style="margin: 0;"><strong>Registro de Retorno:</strong></p>
+            <p style="margin: 5px 0;"><strong>NF Número:</strong> ${ticket.nfNumber}</p>
+            <p style="margin: 5px 0 0 0;"><strong>Devolvida em:</strong> ${returnDateVal}</p>
+          </div>
+        `, 'Verificar Chamado');
+        break;
+
       default:
         return NextResponse.json(
           { error: 'Tipo de notificação inválido' },
@@ -203,6 +257,21 @@ export async function POST(request) {
     // Novo chamado SEMPRE vai para suporte
     if (type === 'new') {
       recipientEmail = supportEmail;
+    }
+
+    // Solicitação de NF SEMPRE vai para financeiro
+    if (type === 'nf_request') {
+      recipientEmail = financeEmail;
+    }
+
+    // NF Emitida vai para o COLABORADOR
+    if (type === 'nf_emitted') {
+      recipientEmail = ticket.createdBy?.email || supportEmail;
+    }
+
+    // NF Devolvida vai APENAS para FINANCEIRO (Confirmação interna)
+    if (type === 'nf_returned') {
+      recipientEmail = financeEmail;
     }
 
     console.log('📧 [EMAIL API] Destinatário determinado:', recipientEmail);
