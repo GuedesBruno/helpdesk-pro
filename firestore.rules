@@ -19,8 +19,12 @@ service cloud.firestore {
       return isAuthenticated() && getUserRole() == 'atendente';
     }
     
-    function isColaborador() {
-      return isAuthenticated() && getUserRole() == 'colaborador';
+    function isGerente() {
+      return isAuthenticated() && getUserRole() == 'gerente';
+    }
+    
+    function getUserDepartment() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.department;
     }
     
     // Users collection
@@ -74,10 +78,12 @@ service cloud.firestore {
     match /tickets/{ticketId} {
       // Read permissions:
       // - Admin and Atendente can read all tickets
+      // - Gerente can read tickets from their department
       // - Colaborador can only read their own tickets
       allow read: if isAuthenticated() && (
         isAdmin() ||
         isAtendente() ||
+        (isGerente() && resource.data.department == getUserDepartment()) ||
         (isColaborador() && resource.data.createdBy.uid == request.auth.uid)
       );
       
@@ -86,11 +92,14 @@ service cloud.firestore {
       
       // Update permissions:
       // - Admin and Atendente can update any ticket
+      // - Gerente can update tickets from their department (add usage notes/comments)
       // - Colaborador can only update their own tickets AND cannot change status
       //   EXCEPT: Can change from waiting_user to analyzing (when responding)
+      //   OR: reopen resolved ticket
       allow update: if isAuthenticated() && (
         isAdmin() ||
         isAtendente() ||
+        (isGerente() && resource.data.department == getUserDepartment()) ||
         (isColaborador() && 
          resource.data.createdBy.uid == request.auth.uid && (
            request.resource.data.status == resource.data.status ||  // Status unchanged
@@ -102,8 +111,10 @@ service cloud.firestore {
       // Delete permissions: 
       // - Admin can delete any ticket
       // - Colaborador can delete their own tickets
+      // - Gerente can delete tickets from their department
       allow delete: if isAuthenticated() && (
         isAdmin() ||
+        (isGerente() && resource.data.department == getUserDepartment()) ||
         (isColaborador() && resource.data.createdBy.uid == request.auth.uid)
       );
       

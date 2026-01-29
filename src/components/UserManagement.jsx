@@ -215,6 +215,7 @@ export default function UserManagement({ onBack }) {
         const labels = {
             admin: 'Administrador',
             atendente: 'Atendente',
+            gerente: 'Gerente / Gestor',
             colaborador: 'Colaborador'
         };
         return labels[role] || role;
@@ -224,6 +225,7 @@ export default function UserManagement({ onBack }) {
         const colors = {
             admin: 'bg-red-100 text-red-800',
             atendente: 'bg-blue-100 text-blue-800',
+            gerente: 'bg-indigo-100 text-indigo-800',
             colaborador: 'bg-gray-100 text-gray-800'
         };
         return colors[role] || 'bg-gray-100 text-gray-800';
@@ -292,6 +294,7 @@ export default function UserManagement({ onBack }) {
                                             className="px-3 py-1 text-sm border rounded-md border-gray-300 focus:outline-none focus:ring-1 focus:ring-tec-blue"
                                         >
                                             <option value="colaborador">Colaborador</option>
+                                            <option value="gerente">Gerente / Gestor</option>
                                             <option value="atendente">Atendente</option>
                                             <option value="admin">Administrador</option>
                                         </select>
@@ -366,6 +369,7 @@ export default function UserManagement({ onBack }) {
                                     className="w-full px-3 py-2 border rounded-md border-gray-300 focus:outline-none focus:ring-1 focus:ring-tec-blue"
                                 >
                                     <option value="colaborador">Colaborador</option>
+                                    <option value="gerente">Gerente / Gestor</option>
                                     <option value="atendente">Atendente</option>
                                     <option value="admin">Administrador</option>
                                 </select>
@@ -479,6 +483,7 @@ export default function UserManagement({ onBack }) {
                                     required
                                 >
                                     <option value="colaborador">Colaborador</option>
+                                    <option value="gerente">Gerente / Gestor</option>
                                     <option value="atendente">Atendente</option>
                                     <option value="admin">Administrador</option>
                                 </select>

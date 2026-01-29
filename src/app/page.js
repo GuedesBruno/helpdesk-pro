@@ -139,8 +139,8 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!currentUser) return;
-    // Não carregar tickets na view 'resolved' (tem query separada) ou 'open' (colaborador)
-    if (view === 'resolved' || (view === 'open' && currentUser.role === 'colaborador')) return;
+    // Não carregar tickets na view 'resolved' (tem query separada) ou 'open' (colaborador/gerente)
+    if (view === 'resolved' || (view === 'open' && ['colaborador', 'gerente'].includes(currentUser.role))) return;
 
     setLoading(true);
     const ticketsCollection = collection(db, 'tickets');
@@ -193,12 +193,19 @@ export default function HomePage() {
           where('assignedTo.uid', '==', currentUser.uid),
           orderBy('timeResolved', 'desc')
         )
-        : query(
-          ticketsCollection,
-          where('status', '==', 'resolved'),
-          where('createdBy.uid', '==', currentUser.uid),
-          orderBy('timeResolved', 'desc')
-        );
+        : currentUser.role === 'gerente'
+          ? query(
+            ticketsCollection,
+            where('status', '==', 'resolved'),
+            where('department', '==', currentUser.department),
+            orderBy('timeResolved', 'desc')
+          )
+          : query(
+            ticketsCollection,
+            where('status', '==', 'resolved'),
+            where('createdBy.uid', '==', currentUser.uid),
+            orderBy('timeResolved', 'desc')
+          );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const resolved = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -210,18 +217,24 @@ export default function HomePage() {
     return () => unsubscribe();
   }, [currentUser, view]);
 
-  // Load open tickets for collaborators (view 'open')
+  // Load open tickets for collaborators/gerentes (view 'open')
   useEffect(() => {
-    if (!currentUser || currentUser.role !== 'colaborador' || view !== 'open') return;
+    if (!currentUser || !['colaborador', 'gerente'].includes(currentUser.role) || view !== 'open') return;
 
     setLoading(true);
     const ticketsCollection = collection(db, 'tickets');
 
-    const q = query(
-      ticketsCollection,
-      where('createdBy.uid', '==', currentUser.uid),
-      orderBy('createdAt', 'desc')
-    );
+    const q = currentUser.role === 'gerente'
+      ? query(
+        ticketsCollection,
+        where('department', '==', currentUser.department),
+        orderBy('createdAt', 'desc')
+      )
+      : query(
+        ticketsCollection,
+        where('createdBy.uid', '==', currentUser.uid),
+        orderBy('createdAt', 'desc')
+      );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allTickets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -456,22 +469,22 @@ export default function HomePage() {
           </div>
 
           <nav className="mt-10">
-            {/* Colaborador vê "Chamados em Aberto" e "Chamados Resolvidos" */}
-            {currentUser.role === 'colaborador' && (
+            {/* Colaborador e Gerente veem "Chamados em Aberto" e "Chamados Resolvidos" */}
+            {['colaborador', 'gerente'].includes(currentUser.role) && (
               <>
                 <button
                   onClick={() => setView('open')}
                   className={`w-full flex items-center gap-3 px-4 py-2 font-semibold transition-colors rounded-md whitespace-nowrap ${view === 'open' ? 'bg-blue-600 text-white' : 'text-tec-gray-dark bg-tec-gray-light hover:bg-gray-300'
                     }`}
                 >
-                  <Users className="w-5 h-5 flex-shrink-0" /> Meus Chamados
+                  <Users className="w-5 h-5 flex-shrink-0" /> {currentUser.role === 'gerente' ? 'Chamados do Depto.' : 'Meus Chamados'}
                 </button>
                 <button
                   onClick={() => setView('resolved')}
                   className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md whitespace-nowrap ${view === 'resolved' ? 'bg-green-600 text-white' : 'text-tec-gray-dark bg-tec-gray-light hover:bg-gray-300'
                     }`}
                 >
-                  <CheckCircle className="w-5 h-5 flex-shrink-0" /> Chamados Resolvidos
+                  <CheckCircle className="w-5 h-5 flex-shrink-0" /> {currentUser.role === 'gerente' ? 'Resolvidos do Depto.' : 'Chamados Resolvidos'}
                 </button>
               </>
             )}
@@ -635,8 +648,8 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Botão Flutuante para Novo Chamado - Apenas para Colaboradores */}
-      {currentUser && currentUser.role === 'colaborador' && view !== 'new' && view !== 'detail' && (
+      {/* Botão Flutuante para Novo Chamado - Apenas para Colaboradores e Gerentes */}
+      {currentUser && ['colaborador', 'gerente'].includes(currentUser.role) && view !== 'new' && view !== 'detail' && (
         <button
           onClick={() => setView('new')}
           className="fixed bottom-8 right-8 w-16 h-16 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center z-50 hover:scale-110"
