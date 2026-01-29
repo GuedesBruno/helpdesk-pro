@@ -21,7 +21,7 @@ export default function HomePage() {
   const [tickets, setTickets] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const TECASSISTIVA_LOGO_URL = "https://tecassistiva.com.br/wp-content/uploads/2022/02/Logo-Tecassistiva.png";
+  const TECASSISTIVA_LOGO_URL = "/logo.png";
 
   // Modals
   const [showExportModal, setShowExportModal] = useState(false);
@@ -190,17 +190,19 @@ export default function HomePage() {
       `}>
         <div className="flex flex-col h-full text-white">
           <div className="p-6 border-b border-blue-800">
-            <div className="flex items-center gap-2 mb-4">
-              {/* Logo Image */}
-              <div className="bg-white p-2 rounded-lg">
-                <img src={TECASSISTIVA_LOGO_URL} alt="Tecassistiva" className="h-8 w-auto" />
-              </div>
+            <div className="flex items-center gap-3 mb-6">
+              <img src={TECASSISTIVA_LOGO_URL} alt="Tecassistiva" className="h-14 w-auto" />
+              <h1 className="text-lg font-bold leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">
+                Helpdesk Tecassistiva
+              </h1>
             </div>
-            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">
-              Helpdesk Tecassistiva
-            </h1>
             <p className="mt-2 text-sm text-blue-100">
-              Olá, {currentUser.name?.split(' ')[0]}
+              Olá, {(() => {
+                if (!currentUser.name) return 'Usuário';
+                const parts = currentUser.name.trim().split(' ');
+                if (parts.length === 1) return parts[0];
+                return `${parts[0]} ${parts[parts.length - 1]}`;
+              })()}
             </p>
             <span className="inline-block px-2 py-1 mt-1 text-xs font-semibold text-blue-900 bg-blue-100 rounded-full capitalize">
               {currentUser.role === 'gerente' ? 'Gerente / Gestor' : currentUser.role}
@@ -278,7 +280,7 @@ export default function HomePage() {
       <main className="flex-1 h-screen overflow-y-auto bg-slate-100 p-4 lg:p-8">
         {/* Mobile Header */}
         <div className="lg:hidden flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-slate-800">HelpDesk Pro</h1>
+          <h1 className="text-xl font-bold text-slate-800">Helpdesk Tecassistiva</h1>
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="p-2 text-slate-600 rounded-md hover:bg-slate-200"
@@ -290,7 +292,7 @@ export default function HomePage() {
         {/* View Content */}
         {view === 'list' && (
           <>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
               <h2 className="text-2xl font-bold text-slate-800">
                 {currentUser.role === 'gerente' ? 'Chamados do Departamento' : 'Chamados em Aberto'}
               </h2>

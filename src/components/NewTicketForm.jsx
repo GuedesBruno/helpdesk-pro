@@ -67,8 +67,13 @@ export default function NewTicketForm({ user, onTicketCreated }) {
       }
     };
 
-    if (user && user.department) {
-      loadData();
+    if (user) {
+      if (user.department) {
+        loadData();
+      } else {
+        console.warn("User has no department assigned. Config loading skipped.");
+        setLoadingConfig(false);
+      }
     }
   }, [user]);
 

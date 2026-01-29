@@ -12,12 +12,6 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-console.log("Firebase Config Debug:", {
-  apiKey: firebaseConfig.apiKey ? "Defined" : "Missing",
-  authDomain: firebaseConfig.authDomain ? "Defined" : "Missing",
-  projectId: firebaseConfig.projectId ? "Defined" : "Missing",
-});
-
 // Initialize Firebase App (only once)
 let app;
 if (!getApps().length) {
@@ -28,8 +22,6 @@ if (!getApps().length) {
   initializeFirestore(app, {
     experimentalForceLongPolling: true,
   });
-
-  console.log("Firestore initialized with long polling for Vercel");
 } else {
   app = getApp();
 }
