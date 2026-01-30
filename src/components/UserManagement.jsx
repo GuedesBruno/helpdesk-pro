@@ -296,6 +296,7 @@ export default function UserManagement({ onBack }) {
                                             className="px-3 py-1 text-sm border rounded-md border-gray-300 focus:outline-none focus:ring-1 focus:ring-tec-blue"
                                         >
                                             <option value="colaborador">Colaborador</option>
+                                            <option value="colaborador_atendente">Colaborador/Atendente</option>
                                             <option value="gerente">Gerente / Gestor</option>
                                             <option value="atendente">Atendente</option>
                                             <option value="admin">Administrador</option>

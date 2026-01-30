@@ -329,7 +329,7 @@ export default function HomePage() {
                 {currentUser.role === 'gerente' ? 'Chamados do Departamento' : 'Chamados em Aberto'}
               </h2>
               {/* Only show New Ticket button for relevant roles */}
-              {['admin', 'colaborador', 'gerente'].includes(currentUser.role) && (
+              {['admin', 'colaborador', 'colaborador_atendente', 'gerente'].includes(currentUser.role) && (
                 <button
                   onClick={() => setView('new')}
                   className="flex items-center gap-2 px-4 py-2 text-white transition-transform bg-tec-blue rounded-full shadow-lg hover:scale-105 hover:bg-tec-blue-light"

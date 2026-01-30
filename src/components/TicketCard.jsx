@@ -8,6 +8,8 @@ export default function TicketCard({ ticket, onClick }) {
     started: 'Iniciado',
     analyzing: 'Em Análise',
     waiting_user: 'Aguardando Retorno',
+    waiting_nf: 'Aguardando Emissão de NF',
+    nf_emitted: 'NF Emitida',
     canceled: 'Cancelado',
     resolved: 'Resolvido',
     // Fallback para status antigos
@@ -20,6 +22,8 @@ export default function TicketCard({ ticket, onClick }) {
     started: 'bg-blue-500',
     analyzing: 'bg-yellow-500',
     waiting_user: 'bg-orange-500',
+    waiting_nf: 'bg-purple-500',
+    nf_emitted: 'bg-indigo-500',
     canceled: 'bg-red-500',
     resolved: 'bg-green-500',
     // Fallback para status antigos
