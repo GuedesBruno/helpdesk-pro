@@ -153,6 +153,10 @@ export default function ProductManagement({ onBack }) {
                     return;
                 }
 
+                // Auto-detect separator: check first line for comma or semicolon
+                const firstLine = lines[0];
+                const separator = firstLine.includes(';') ? ';' : ',';
+
                 // Skip header row
                 const dataLines = lines.slice(1);
                 const results = {
@@ -161,7 +165,12 @@ export default function ProductManagement({ onBack }) {
                 };
 
                 for (const line of dataLines) {
-                    const [code, name] = line.split(',').map(s => s.trim());
+                    // Split by detected separator
+                    const parts = line.split(separator).map(s => s.trim());
+
+                    // Handle both "code,name" and "code;name" formats
+                    const code = parts[0];
+                    const name = parts.slice(1).join(' '); // Join remaining parts in case name has separator
 
                     if (!code || !name) {
                         results.errors.push(`Linha inválida: ${line}`);
@@ -202,7 +211,8 @@ export default function ProductManagement({ onBack }) {
             }
         };
 
-        reader.readAsText(file);
+        // Read with UTF-8 encoding to handle special characters
+        reader.readAsText(file, 'UTF-8');
         event.target.value = ''; // Reset input
     };
 
@@ -323,12 +333,12 @@ export default function ProductManagement({ onBack }) {
                             <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
                                 <h4 className="font-semibold text-blue-900 mb-2">📋 Formato do Arquivo CSV</h4>
                                 <p className="text-sm text-blue-800 mb-3">
-                                    O arquivo deve conter duas colunas separadas por vírgula:
+                                    O arquivo deve conter duas colunas separadas por <strong>vírgula (,)</strong> ou <strong>ponto e vírgula (;)</strong>:
                                 </p>
                                 <div className="bg-white p-3 rounded border border-blue-300 font-mono text-sm">
                                     <div className="text-gray-600">codigo,nome</div>
                                     <div>PROD-001,Notebook Dell Latitude</div>
-                                    <div>PROD-002,Mouse Logitech MX Master</div>
+                                    <div>PROD-002;Mouse Logitech MX Master</div>
                                     <div>PROD-003,Teclado Mecânico</div>
                                 </div>
                             </div>
@@ -336,7 +346,8 @@ export default function ProductManagement({ onBack }) {
                             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
                                 <h4 className="font-semibold text-yellow-900 mb-2">⚠️ Importante</h4>
                                 <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
-                                    <li>A primeira linha deve ser o cabeçalho (codigo,nome)</li>
+                                    <li>A primeira linha deve ser o cabeçalho</li>
+                                    <li>Aceita vírgula (,) ou ponto e vírgula (;)</li>
                                     <li>Códigos duplicados serão ignorados</li>
                                     <li>Todos os produtos serão criados como "Ativos"</li>
                                 </ul>
