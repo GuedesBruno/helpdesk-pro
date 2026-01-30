@@ -11,6 +11,7 @@ const BRAZIL_STATES = [
 export default function NewTicketForm({ user, onTicketCreated }) {
   const [categories, setCategories] = useState([]);
   const [productsList, setProductsList] = useState([]); // Database products
+  const [inventoriesList, setInventoriesList] = useState([]); // Database inventories
   const [loadingConfig, setLoadingConfig] = useState(true);
 
   // Form Basic Fields
@@ -30,7 +31,7 @@ export default function NewTicketForm({ user, onTicketCreated }) {
 
   // Product Selection Rows (Default 6)
   const [selectedProducts, setSelectedProducts] = useState(
-    Array(6).fill().map(() => ({ productId: '', name: '', code: '' }))
+    Array(6).fill().map(() => ({ productId: '', name: '', code: '', inventory: '', inventoryName: '' }))
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,6 +60,15 @@ export default function NewTicketForm({ user, onTicketCreated }) {
           .filter(p => p.active)
           .sort((a, b) => a.name.localeCompare(b.name));
         setProductsList(activeProds);
+
+        // Load Inventories
+        const invsRef = collection(db, 'inventories');
+        const invsSnapshot = await getDocs(invsRef);
+        const activeInvs = invsSnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(inv => inv.active)
+          .sort((a, b) => a.name.localeCompare(b.name));
+        setInventoriesList(activeInvs);
 
       } catch (err) {
         console.error("Error loading form config:", err);
@@ -89,11 +99,10 @@ export default function NewTicketForm({ user, onTicketCreated }) {
     }
   };
 
-  // Handle Product Row Change
   const handleProductChange = (index, prodId) => {
     const newRows = [...selectedProducts];
     if (!prodId) {
-      newRows[index] = { productId: '', name: '', code: '' };
+      newRows[index] = { productId: '', name: '', code: '', inventory: '', inventoryName: '' };
     } else {
       const prod = productsList.find(p => p.id === prodId);
       if (prod) {
@@ -101,6 +110,8 @@ export default function NewTicketForm({ user, onTicketCreated }) {
           productId: prod.id,
           name: prod.name,
           code: prod.code,
+          inventory: newRows[index].inventory || '', // Keep existing inventory selection
+          inventoryName: newRows[index].inventoryName || '',
           serialNumber: '' // Will be filled by attendant
         };
       }
@@ -109,12 +120,27 @@ export default function NewTicketForm({ user, onTicketCreated }) {
   };
 
   const addProductRow = () => {
-    setSelectedProducts([...selectedProducts, { productId: '', name: '', code: '' }]);
+    setSelectedProducts([...selectedProducts, { productId: '', name: '', code: '', inventory: '', inventoryName: '' }]);
   };
 
   const removeProductRow = (index) => {
     const newRows = [...selectedProducts];
     newRows.splice(index, 1);
+    setSelectedProducts(newRows);
+  };
+
+  const handleInventoryChange = (index, invCode) => {
+    const newRows = [...selectedProducts];
+    if (!invCode) {
+      newRows[index].inventory = '';
+      newRows[index].inventoryName = '';
+    } else {
+      const inv = inventoriesList.find(i => i.code === invCode);
+      if (inv) {
+        newRows[index].inventory = inv.code;
+        newRows[index].inventoryName = inv.name;
+      }
+    }
     setSelectedProducts(newRows);
   };
 
@@ -353,6 +379,19 @@ export default function NewTicketForm({ user, onTicketCreated }) {
                       {productsList.map(p => (
                         <option key={p.id} value={p.id}>
                           {p.code} - {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={row.inventory}
+                      onChange={(e) => handleInventoryChange(index, e.target.value)}
+                      className="w-48 px-3 py-2 border rounded-md border-slate-300 text-sm focus:ring-tec-blue focus:border-tec-blue"
+                      disabled={!row.productId}
+                    >
+                      <option value="">Estoque...</option>
+                      {inventoriesList.map(inv => (
+                        <option key={inv.id} value={inv.code}>
+                          {inv.name}
                         </option>
                       ))}
                     </select>
