@@ -66,7 +66,13 @@ export default function HomePage() {
       } else if (currentUser.role === 'gerente') {
         q = query(ticketsRef, where('status', '==', 'resolved'), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
       } else if (currentUser.role === 'atendente' || currentUser.role === 'colaborador_atendente') {
-        q = query(ticketsRef, where('status', '==', 'resolved'), orderBy('createdAt', 'desc'));
+        // Support attendants see all resolved tickets
+        // Other department attendants (e.g., Finance) see only their department's resolved tickets
+        if (currentUser.department === 'suporte') {
+          q = query(ticketsRef, where('status', '==', 'resolved'), orderBy('createdAt', 'desc'));
+        } else {
+          q = query(ticketsRef, where('status', '==', 'resolved'), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
+        }
       } else {
         q = query(ticketsRef, where('status', '==', 'resolved'), where('createdBy.uid', '==', currentUser.uid), orderBy('createdAt', 'desc'));
       }
@@ -78,11 +84,14 @@ export default function HomePage() {
         q = query(ticketsRef, where('status', '!=', 'resolved'), orderBy('status'), orderBy('createdAt', 'desc'));
       } else if (currentUser.role === 'gerente') {
         q = query(ticketsRef, where('status', '!=', 'resolved'), where('department', '==', currentUser.department), orderBy('status'), orderBy('createdAt', 'desc'));
-      } else if (currentUser.role === 'atendente') {
-        q = query(ticketsRef, where('status', '!=', 'resolved'), orderBy('status'), orderBy('createdAt', 'desc'));
-      } else if (currentUser.role === 'colaborador_atendente') {
-        // Hybrid role: see department tickets for attendance + own tickets
-        q = query(ticketsRef, where('status', '!=', 'resolved'), orderBy('status'), orderBy('createdAt', 'desc'));
+      } else if (currentUser.role === 'atendente' || currentUser.role === 'colaborador_atendente') {
+        // Support attendants see all open tickets
+        // Other department attendants (e.g., Finance) see only their department's open tickets
+        if (currentUser.department === 'suporte') {
+          q = query(ticketsRef, where('status', '!=', 'resolved'), orderBy('status'), orderBy('createdAt', 'desc'));
+        } else {
+          q = query(ticketsRef, where('status', '!=', 'resolved'), where('department', '==', currentUser.department), orderBy('status'), orderBy('createdAt', 'desc'));
+        }
       } else {
         q = query(ticketsRef, where('status', '!=', 'resolved'), where('createdBy.uid', '==', currentUser.uid), orderBy('status'), orderBy('createdAt', 'desc'));
       }
@@ -222,12 +231,16 @@ export default function HomePage() {
       `}>
         <div className="flex flex-col h-full text-white">
           <div className="p-6 border-b border-blue-800">
-            <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={() => { setView('list'); setIsSidebarOpen(false); }}
+              className="flex items-center gap-3 mb-6 w-full hover:opacity-80 transition-opacity cursor-pointer"
+              title="Ir para página inicial"
+            >
               <img src={TECASSISTIVA_LOGO_URL} alt="Tecassistiva" className="h-14 w-auto" />
               <h1 className="text-lg font-bold leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">
                 Helpdesk Tecassistiva
               </h1>
-            </div>
+            </button>
             <p className="mt-2 text-sm text-blue-100">
               Olá, {(() => {
                 if (!currentUser.name) return 'Usuário';
