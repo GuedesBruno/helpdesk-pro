@@ -84,21 +84,23 @@ export default function HomePage() {
     } else if (view === 'finance_control') {
       // Finance view - Tickets waiting for NF or with NF Emitted (Pending Return)
       q = query(ticketsRef, where('status', 'in', ['waiting_nf', 'nf_emitted']), orderBy('createdAt', 'desc'));
-    } else if (view === 'list') { // Open tickets
+    } else if (view === 'list') { // Open tickets - exclude finalized statuses
+      const activeStatuses = ['queue', 'started', 'analyzing', 'waiting_user', 'waiting_nf', 'nf_emitted'];
+
       if (currentUser.role === 'admin') {
-        q = query(ticketsRef, where('status', '!=', 'resolved'), orderBy('status'), orderBy('createdAt', 'desc'));
+        q = query(ticketsRef, where('status', 'in', activeStatuses), orderBy('createdAt', 'desc'));
       } else if (currentUser.role === 'gerente') {
-        q = query(ticketsRef, where('status', '!=', 'resolved'), where('department', '==', currentUser.department), orderBy('status'), orderBy('createdAt', 'desc'));
+        q = query(ticketsRef, where('status', 'in', activeStatuses), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
       } else if (currentUser.role === 'atendente' || currentUser.role === 'colaborador_atendente') {
         // Support attendants see all open tickets
         // Other department attendants (e.g., Finance) see only their department's open tickets
         if (currentUser.department === 'suporte') {
-          q = query(ticketsRef, where('status', '!=', 'resolved'), orderBy('status'), orderBy('createdAt', 'desc'));
+          q = query(ticketsRef, where('status', 'in', activeStatuses), orderBy('createdAt', 'desc'));
         } else {
-          q = query(ticketsRef, where('status', '!=', 'resolved'), where('department', '==', currentUser.department), orderBy('status'), orderBy('createdAt', 'desc'));
+          q = query(ticketsRef, where('status', 'in', activeStatuses), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
         }
       } else {
-        q = query(ticketsRef, where('status', '!=', 'resolved'), where('createdBy.uid', '==', currentUser.uid), orderBy('status'), orderBy('createdAt', 'desc'));
+        q = query(ticketsRef, where('status', 'in', activeStatuses), where('createdBy.uid', '==', currentUser.uid), orderBy('createdAt', 'desc'));
       }
     } else {
       return; // Other views don't need ticket list
