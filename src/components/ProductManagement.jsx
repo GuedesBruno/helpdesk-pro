@@ -211,8 +211,14 @@ export default function ProductManagement({ onBack }) {
             }
         };
 
-        // Read with UTF-8 encoding to handle special characters
-        reader.readAsText(file, 'UTF-8');
+        // Try reading with Windows-1252 (common for Excel exports) first
+        // If that fails or has issues, UTF-8 will be used
+        try {
+            reader.readAsText(file, 'Windows-1252');
+        } catch (err) {
+            // Fallback to UTF-8 if Windows-1252 is not supported
+            reader.readAsText(file, 'UTF-8');
+        }
         event.target.value = ''; // Reset input
     };
 
