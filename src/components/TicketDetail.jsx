@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, arrayUnion, onSnapshot, serverTimestamp, deleteDoc, collection, addDoc } from 'firebase/firestore';
-import { ArrowLeft, Clock, MessageSquare, CheckCircle, XCircle, Play, Pause, FileText, Box, Truck } from 'lucide-react';
+import { ArrowLeft, Clock, MessageSquare, CheckCircle, XCircle, Play, Pause, FileText, Box, Truck, Trash2 } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,9 +36,14 @@ export default function TicketDetail({ ticket, user, onBack }) {
     confirmText: 'Confirmar'
   });
 
+  // Delete Modal State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   // Permissions
   const canActOnTicket = ['admin', 'atendente', 'gerente', 'financeiro', 'colaborador_atendente'].includes(user.role);
-  const isFinance = user.role === 'admin' || user.department === 'financeiro' || user.role === 'financeiro'; // Logic to identify finance users
+  const isFinance = user.role === 'admin' || user.department === 'financeiro' || user.role === 'financeiro';
+  const isFinalized = ['resolved', 'canceled', 'no_solution'].includes(status);
+  const canDelete = user.role === 'admin' || (isFinalized && ticket.createdBy?.uid === user.uid);
 
   // Load comments
   useEffect(() => {
@@ -114,6 +119,23 @@ export default function TicketDetail({ ticket, user, onBack }) {
         }),
       });
     } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  // --- Delete Ticket ---
+  const handleDeleteTicket = async () => {
+    if (!canDelete) return;
+
+    setLoading(true);
+    try {
+      await deleteDoc(doc(db, 'tickets', ticket.id));
+      setShowDeleteModal(false);
+      onBack(); // Return to ticket list
+    } catch (err) {
+      console.error('Error deleting ticket:', err);
+      alert('Erro ao excluir chamado: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // --- Equipment Separation Logic ---
@@ -312,6 +334,16 @@ export default function TicketDetail({ ticket, user, onBack }) {
         </div>
         <div className="flex items-center gap-3">
           {getStatusBadge(status)}
+          {canDelete && (
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="flex items-center gap-2 px-3 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+              title="Excluir chamado"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Excluir</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -529,6 +561,43 @@ export default function TicketDetail({ ticket, user, onBack }) {
         variant={confirmModal.variant}
         confirmText={confirmModal.confirmText}
       />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl">
+            <h3 className="text-xl font-bold text-red-600 mb-4 flex items-center gap-2">
+              <Trash2 className="w-6 h-6" />
+              Excluir Chamado?
+            </h3>
+            <div className="mb-6 space-y-2">
+              <p className="text-slate-700">
+                Esta ação é <strong>permanente</strong> e não pode ser desfeita.
+              </p>
+              <div className="p-3 bg-gray-50 rounded border border-gray-200 text-sm">
+                <p><strong>ID:</strong> {ticket.id.slice(0, 8)}</p>
+                <p><strong>Assunto:</strong> {ticket.subject}</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+                disabled={loading}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteTicket}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                disabled={loading}
+              >
+                {loading ? 'Excluindo...' : 'Sim, Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

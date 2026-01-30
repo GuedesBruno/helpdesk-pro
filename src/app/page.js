@@ -62,20 +62,24 @@ export default function HomePage() {
     const ticketsRef = collection(db, 'tickets');
 
     if (view === 'resolved') {
+      // Finalized tickets: resolved, canceled, no_solution
+      const finalizedStatuses = ['resolved', 'canceled', 'no_solution'];
+
       if (currentUser.role === 'admin') {
-        q = query(ticketsRef, where('status', '==', 'resolved'), orderBy('createdAt', 'desc'));
+        q = query(ticketsRef, where('status', 'in', finalizedStatuses), orderBy('createdAt', 'desc'));
       } else if (currentUser.role === 'gerente') {
-        q = query(ticketsRef, where('status', '==', 'resolved'), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
+        q = query(ticketsRef, where('status', 'in', finalizedStatuses), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
       } else if (currentUser.role === 'atendente' || currentUser.role === 'colaborador_atendente') {
-        // Support attendants see all resolved tickets
-        // Other department attendants (e.g., Finance) see only their department's resolved tickets
+        // Support attendants see all finalized tickets
+        // Other department attendants (e.g., Finance) see only their department's finalized tickets
         if (currentUser.department === 'suporte') {
-          q = query(ticketsRef, where('status', '==', 'resolved'), orderBy('createdAt', 'desc'));
+          q = query(ticketsRef, where('status', 'in', finalizedStatuses), orderBy('createdAt', 'desc'));
         } else {
-          q = query(ticketsRef, where('status', '==', 'resolved'), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
+          q = query(ticketsRef, where('status', 'in', finalizedStatuses), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
         }
       } else {
-        q = query(ticketsRef, where('status', '==', 'resolved'), where('createdBy.uid', '==', currentUser.uid), orderBy('createdAt', 'desc'));
+        // Colaborador sees their own finalized tickets
+        q = query(ticketsRef, where('status', 'in', finalizedStatuses), where('createdBy.uid', '==', currentUser.uid), orderBy('createdAt', 'desc'));
       }
     } else if (view === 'finance_control') {
       // Finance view - Tickets waiting for NF or with NF Emitted (Pending Return)
@@ -271,7 +275,7 @@ export default function HomePage() {
                 ${view === 'resolved' ? 'bg-white text-tec-blue shadow-md' : 'text-blue-100 hover:bg-blue-800'}`}
             >
               <CheckCircle className="w-5 h-5" />
-              {currentUser.role === 'gerente' ? 'Resolvidos do Depto.' : 'Resolvidos'}
+              {currentUser.role === 'gerente' ? 'Finalizados do Depto.' : 'Finalizados'}
             </button>
 
             {/* Menu Financeiro */}
