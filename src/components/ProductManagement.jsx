@@ -6,6 +6,7 @@ import { Package, Plus, Edit2, Trash2, X, AlertCircle, Loader2, Search } from 'l
 
 export default function ProductManagement({ onBack }) {
     const [products, setProducts] = useState([]);
+    const [inventories, setInventories] = useState([]);
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -17,6 +18,7 @@ export default function ProductManagement({ onBack }) {
     const [formData, setFormData] = useState({
         name: '',
         code: '',
+        inventory: '',
         active: true
     });
 
@@ -32,6 +34,18 @@ export default function ProductManagement({ onBack }) {
             setProducts(sorted);
             setFilteredProducts(sorted);
             setLoading(false);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Fetch inventories
+    useEffect(() => {
+        const q = query(collection(db, 'inventories'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // Only active inventories
+            const activeInv = data.filter(inv => inv.active).sort((a, b) => a.name.localeCompare(b.name));
+            setInventories(activeInv);
         });
         return () => unsubscribe();
     }, []);
@@ -55,6 +69,7 @@ export default function ProductManagement({ onBack }) {
             setFormData({
                 name: product.name,
                 code: product.code,
+                inventory: product.inventory || '',
                 active: product.active !== false
             });
         } else {
@@ -62,6 +77,7 @@ export default function ProductManagement({ onBack }) {
             setFormData({
                 name: '',
                 code: '',
+                inventory: '',
                 active: true
             });
         }
@@ -90,6 +106,8 @@ export default function ProductManagement({ onBack }) {
             const data = {
                 name: formData.name.trim(),
                 code: formData.code.trim(),
+                inventory: formData.inventory,
+                inventoryName: inventories.find(inv => inv.code === formData.inventory)?.name || '',
                 active: formData.active,
                 updatedAt: serverTimestamp(),
             };
@@ -165,6 +183,7 @@ export default function ProductManagement({ onBack }) {
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estoque</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                         </tr>
@@ -174,6 +193,9 @@ export default function ProductManagement({ onBack }) {
                             <tr key={product.id} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.code}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.name}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {product.inventoryName || '-'}
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                     <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${product.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                         {product.active ? 'Ativo' : 'Inativo'}
@@ -209,6 +231,20 @@ export default function ProductManagement({ onBack }) {
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Nome do Produto</label>
                                 <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border rounded-md" required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Estoque</label>
+                                <select
+                                    value={formData.inventory}
+                                    onChange={e => setFormData({ ...formData, inventory: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-tec-blue"
+                                    required
+                                >
+                                    <option value="">Selecione um estoque</option>
+                                    {inventories.map(inv => (
+                                        <option key={inv.id} value={inv.code}>{inv.name}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="flex items-center gap-2">
                                 <input type="checkbox" id="active" checked={formData.active} onChange={e => setFormData({ ...formData, active: e.target.checked })} className="rounded text-tec-blue" />

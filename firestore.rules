@@ -161,5 +161,14 @@ service cloud.firestore {
       // Only admins can manage products
       allow create, update, delete: if isAdmin();
     }
+
+    // Inventories collection
+    match /inventories/{inventoryId} {
+      // Authenticated users can read inventories (to select in product form)
+      allow read: if isAuthenticated();
+      
+      // Only admins can manage inventories
+      allow create, update, delete: if isAdmin();
+    }
   }
 }

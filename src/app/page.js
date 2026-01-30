@@ -12,11 +12,12 @@ import UserManagement from '@/components/UserManagement';
 import DepartmentManagement from '@/components/DepartmentManagement';
 import CategoryManagement from '@/components/CategoryManagement';
 import ProductManagement from '@/components/ProductManagement';
+import InventoryManagement from '@/components/InventoryManagement';
 
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('list'); // list, detail, new, users, resolved, departments, categories, products, waiting_nf
+  const [view, setView] = useState('list'); // list, detail, new, users, resolved, departments, categories, products, inventories, finance_control
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -306,6 +307,9 @@ export default function HomePage() {
                 <button onClick={() => setView('products')} className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md ${view === 'products' ? 'bg-white text-tec-blue' : 'text-blue-100 hover:bg-blue-800'}`}>
                   <Package className="w-5 h-5" /> Produtos
                 </button>
+                <button onClick={() => setView('inventories')} className={`w-full flex items-center gap-3 px-4 py-2 mt-2 font-semibold transition-colors rounded-md ${view === 'inventories' ? 'bg-white text-tec-blue' : 'text-blue-100 hover:bg-blue-800'}`}>
+                  <Package className="w-5 h-5" /> Estoques
+                </button>
               </>
             )}
           </nav>
@@ -470,6 +474,7 @@ export default function HomePage() {
         {view === 'departments' && <DepartmentManagement onBack={handleBackToList} />}
         {view === 'categories' && <CategoryManagement onBack={handleBackToList} />}
         {view === 'products' && <ProductManagement onBack={handleBackToList} />}
+        {view === 'inventories' && <InventoryManagement onBack={handleBackToList} />}
       </main>
 
       {/* Export Modal */}
