@@ -433,30 +433,12 @@ export default function NewTicketForm({ user, onTicketCreated }) {
                               onClick={() => handleProductSelect(index, product)}
                               className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
                             >
-                              <div className="font-medium text-sm">{product.code}</div>
-                              <div className="text-xs text-gray-600">{product.name}</div>
+                              <div className="text-sm">{product.name}</div>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
-
-                    {/* Inventory Field - Only for Support Attendants */}
-                    {canSelectInventory && (
-                      <select
-                        value={row.inventory}
-                        onChange={(e) => handleInventoryChange(index, e.target.value)}
-                        className="w-48 px-3 py-2 border rounded-md border-slate-300 text-sm focus:ring-tec-blue focus:border-tec-blue"
-                        disabled={!row.productId}
-                      >
-                        <option value="">Estoque...</option>
-                        {inventoriesList.map(inv => (
-                          <option key={inv.id} value={inv.code}>
-                            {inv.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
 
                     {index >= 6 && (
                       <button
