@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, arrayUnion, onSnapshot, serverTimestamp, deleteDoc, collection, addDoc } from 'firebase/firestore';
-import { ArrowLeft, Clock, MessageSquare, CheckCircle, XCircle, Play, Pause, FileText, Box, Truck, Trash2 } from 'lucide-react';
+import { ArrowLeft, Clock, MessageSquare, CheckCircle, XCircle, Play, Pause, FileText, Box, Truck, Trash2, User } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -328,7 +328,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
               <span>•</span>
               <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {format(ticket.createdAt?.toDate ? ticket.createdAt.toDate() : new Date(), "dd/MM/yyyy HH:mm")}</span>
               <span>•</span>
-              <span>Solicitante: {ticket.createdBy?.name || 'N/A'}</span>
+              <span className="flex items-center gap-1"><User className="w-3 h-3" /> {ticket.createdBy?.name || 'N/A'}</span>
               <span>•</span>
               <span>{ticket.departmentName || 'Geral'}</span>
             </div>

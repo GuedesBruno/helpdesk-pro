@@ -1,6 +1,6 @@
 // src/components/TicketCard.jsx
 'use client';
-import { Calendar, Tag } from 'lucide-react';
+import { Calendar, Tag, User } from 'lucide-react';
 
 export default function TicketCard({ ticket, onClick }) {
   const statusLabels = {
@@ -71,8 +71,9 @@ export default function TicketCard({ ticket, onClick }) {
         </div>
       </div>
       <h3 className="mb-2 font-bold text-slate-800">{subject}</h3>
-      <div className="mb-2 text-sm text-slate-600">
-        <span>Solicitante: <strong>{ticket.createdBy?.name || 'N/A'}</strong></span>
+      <div className="mb-2 text-sm text-slate-600 flex items-center gap-1">
+        <User className="w-4 h-4" />
+        <strong>{ticket.createdBy?.name || 'N/A'}</strong>
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-slate-600">
