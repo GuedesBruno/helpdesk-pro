@@ -347,30 +347,30 @@ export default function HomePage() {
         {/* View Content */}
         {view === 'list' && (
           <>
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+            <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-slate-800">
-                {currentUser.role === 'gerente' ? 'Chamados do Departamento' : 'Chamados em Aberto'}
+                {currentUser.role === 'gerente' ? 'Chamados do Depto.' : 'Meus Chamados'}
               </h2>
               {/* Only show New Ticket button for relevant roles */}
               {['admin', 'colaborador', 'colaborador_atendente', 'gerente'].includes(currentUser.role) && (
                 <button
                   onClick={() => setView('new')}
-                  className="flex items-center gap-2 px-4 py-2 text-white transition-transform bg-tec-blue rounded-full shadow-lg hover:scale-105 hover:bg-tec-blue-light"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white transition-all bg-tec-blue rounded-lg shadow-md hover:shadow-lg hover:bg-tec-blue-light"
                 >
-                  <Plus className="w-5 h-5" /> Novo Chamado
+                  <Plus className="w-4 h-4" /> Novo Chamado
                 </button>
               )}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {tickets.length > 0 ? (
                 tickets.map(ticket => (
                   <TicketCard key={ticket.id} ticket={ticket} onClick={() => handleTicketClick(ticket)} />
                 ))
               ) : (
-                <div className="col-span-full py-12 text-center text-slate-500 bg-white rounded-lg shadow-sm">
-                  <CheckCircle className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                  <p className="text-lg">Nenhum chamado pendente.</p>
+                <div className="col-span-full py-16 text-center text-slate-500 bg-white rounded-xl shadow-sm">
+                  <CheckCircle className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                  <p className="text-lg font-medium">Nenhum chamado pendente.</p>
                 </div>
               )}
             </div>
@@ -379,15 +379,15 @@ export default function HomePage() {
 
         {view === 'resolved' && (
           <>
-            <h2 className="mb-6 text-2xl font-bold text-slate-800">Chamados Resolvidos</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <h2 className="mb-6 text-2xl font-bold text-slate-800">Finalizados</h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {tickets.length > 0 ? (
                 tickets.map(ticket => (
                   <TicketCard key={ticket.id} ticket={ticket} onClick={() => handleTicketClick(ticket)} />
                 ))
               ) : (
-                <div className="col-span-full py-12 text-center text-slate-500 bg-white rounded-lg shadow-sm">
-                  <p>Nenhum chamado resolvido encontrado.</p>
+                <div className="col-span-full py-16 text-center text-slate-500 bg-white rounded-xl shadow-sm">
+                  <p className="text-lg font-medium">Nenhum chamado finalizado encontrado.</p>
                 </div>
               )}
             </div>
@@ -398,14 +398,14 @@ export default function HomePage() {
           <>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <FileText className="w-6 h-6 text-pink-600" />
-                Controle de Notas Fiscais
+                <FileText className="w-5 h-5 text-pink-600" />
+                Controle de NFs
               </h2>
               <button
                 onClick={exportToCSV}
-                className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700 shadow-sm"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-md hover:shadow-lg transition-all"
               >
-                <Download className="w-5 h-5" /> Baixar Planilha
+                <Download className="w-4 h-4" /> Exportar
               </button>
             </div>
 

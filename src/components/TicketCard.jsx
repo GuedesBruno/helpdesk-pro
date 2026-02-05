@@ -61,26 +61,53 @@ export default function TicketCard({ ticket, onClick }) {
   const priorityBorderClass = getPriorityColor(ticket.priority);
 
   return (
-    <div onClick={onClick} className={`p-4 transition-all duration-300 bg-white border-l-8 rounded-md shadow-sm cursor-pointer ${priorityBorderClass} hover:shadow-lg hover:scale-[1.02]`}>
-      <div className="flex items-center justify-between mb-2">
-        <span className={`px-2 py-1 text-xs font-bold text-white rounded-full ${statusColor}`}>
+    <div
+      onClick={onClick}
+      className={`
+        group relative p-4 bg-white rounded-xl border-l-4 ${priorityBorderClass}
+        shadow-sm hover:shadow-xl
+        transition-all duration-300 ease-out
+        hover:scale-[1.02] hover:-translate-y-1
+        cursor-pointer
+      `}
+    >
+      {/* Header com badges */}
+      <div className="flex items-center justify-between mb-3">
+        <span className={`
+          px-3 py-1.5 text-xs font-semibold rounded-full
+          ${statusColor} text-white
+          shadow-sm
+        `}>
           {statusLabel}
         </span>
         <div className="flex items-center gap-2 text-xs text-slate-500">
-          <Calendar className="w-4 h-4" /> <span>{formattedDate}</span>
+          <Calendar className="w-3.5 h-3.5" />
+          <span>{formattedDate}</span>
         </div>
       </div>
-      <h3 className="mb-2 font-bold text-slate-800">{subject}</h3>
-      <div className="mb-2 text-sm text-slate-600 flex items-center gap-1">
-        <User className="w-4 h-4" />
+
+      {/* Título com melhor tipografia */}
+      <h3 className="text-base font-bold text-slate-800 mb-2 line-clamp-2 leading-snug">
+        {subject}
+      </h3>
+
+      {/* Separador sutil */}
+      <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-2" />
+
+      {/* Info do solicitante */}
+      <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
+        <User className="w-4 h-4 text-slate-400" />
         <strong>{ticket.createdBy?.name || 'N/A'}</strong>
       </div>
+
+      {/* Footer */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-slate-600">
-          <Tag className="w-4 h-4" /> <span>{getDepartmentLabel(department)}</span>
+          <Tag className="w-4 h-4 text-slate-400" />
+          <span>{getDepartmentLabel(department)}</span>
         </div>
         {assignedTo && (
-          <span className="px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-50 rounded">
+          <span className="px-3 py-1 text-xs font-semibold text-blue-700 bg-blue-50 rounded-full border border-blue-100">
             📌 {assignedTo.name}
           </span>
         )}
