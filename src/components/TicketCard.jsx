@@ -71,6 +71,9 @@ export default function TicketCard({ ticket, onClick }) {
         </div>
       </div>
       <h3 className="mb-2 font-bold text-slate-800">{subject}</h3>
+      <div className="mb-2 text-sm text-slate-600">
+        <span>Solicitante: <strong>{ticket.createdBy?.name || 'N/A'}</strong></span>
+      </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-slate-600">
           <Tag className="w-4 h-4" /> <span>{getDepartmentLabel(department)}</span>

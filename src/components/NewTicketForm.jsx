@@ -14,6 +14,14 @@ export default function NewTicketForm({ user, onTicketCreated }) {
   const [inventoriesList, setInventoriesList] = useState([]); // Database inventories
   const [loadingConfig, setLoadingConfig] = useState(true);
 
+  // Permission: Only support attendants can select inventory
+  const canSelectInventory = ['admin', 'atendente', 'colaborador_atendente'].includes(user.role);
+
+  // Product Autocomplete States
+  const [productSearches, setProductSearches] = useState({});
+  const [filteredProductLists, setFilteredProductLists] = useState({});
+  const [showDropdown, setShowDropdown] = useState({});
+
   // Form Basic Fields
   const [subject, setSubject] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -97,6 +105,37 @@ export default function NewTicketForm({ user, onTicketCreated }) {
     if (cat?.type === 'equipment_separation' && !subject) {
       setSubject('Separação de Equipamentos para Reunião');
     }
+  };
+
+  // Product Search Handler
+  const handleProductSearch = (index, searchTerm) => {
+    setProductSearches(prev => ({ ...prev, [index]: searchTerm }));
+    setShowDropdown(prev => ({ ...prev, [index]: true }));
+
+    if (!searchTerm.trim()) {
+      setFilteredProductLists(prev => ({ ...prev, [index]: productsList }));
+    } else {
+      const filtered = productsList.filter(p =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.code.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredProductLists(prev => ({ ...prev, [index]: filtered }));
+    }
+  };
+
+  // Product Selection from Autocomplete
+  const handleProductSelect = (index, product) => {
+    const updated = [...selectedProducts];
+    updated[index] = {
+      productId: product.id,
+      name: product.name,
+      code: product.code,
+      inventory: updated[index].inventory || '',
+      inventoryName: updated[index].inventoryName || ''
+    };
+    setSelectedProducts(updated);
+    setProductSearches(prev => ({ ...prev, [index]: `${product.code} - ${product.name}` }));
+    setShowDropdown(prev => ({ ...prev, [index]: false }));
   };
 
   const handleProductChange = (index, prodId) => {
@@ -370,31 +409,55 @@ export default function NewTicketForm({ user, onTicketCreated }) {
                 {selectedProducts.map((row, index) => (
                   <div key={index} className="flex gap-3 items-center">
                     <span className="text-sm font-mono text-gray-400 w-6">{index + 1}.</span>
-                    <select
-                      value={row.productId}
-                      onChange={(e) => handleProductChange(index, e.target.value)}
-                      className="flex-1 px-3 py-2 border rounded-md border-slate-300 text-sm focus:ring-tec-blue focus:border-tec-blue"
-                    >
-                      <option value="">Selecione um produto...</option>
-                      {productsList.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.code} - {p.name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={row.inventory}
-                      onChange={(e) => handleInventoryChange(index, e.target.value)}
-                      className="w-48 px-3 py-2 border rounded-md border-slate-300 text-sm focus:ring-tec-blue focus:border-tec-blue"
-                      disabled={!row.productId}
-                    >
-                      <option value="">Estoque...</option>
-                      {inventoriesList.map(inv => (
-                        <option key={inv.id} value={inv.code}>
-                          {inv.name}
-                        </option>
-                      ))}
-                    </select>
+
+                    {/* Product Autocomplete */}
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={productSearches[index] || ''}
+                        onChange={(e) => handleProductSearch(index, e.target.value)}
+                        onFocus={() => {
+                          if (!productSearches[index]) {
+                            setFilteredProductLists(prev => ({ ...prev, [index]: productsList }));
+                            setShowDropdown(prev => ({ ...prev, [index]: true }));
+                          }
+                        }}
+                        placeholder="Digite para buscar produto..."
+                        className="w-full px-3 py-2 border rounded-md border-slate-300 text-sm focus:ring-tec-blue focus:border-tec-blue"
+                      />
+                      {showDropdown[index] && filteredProductLists[index]?.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                          {filteredProductLists[index].map(product => (
+                            <div
+                              key={product.id}
+                              onClick={() => handleProductSelect(index, product)}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+                            >
+                              <div className="font-medium text-sm">{product.code}</div>
+                              <div className="text-xs text-gray-600">{product.name}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Inventory Field - Only for Support Attendants */}
+                    {canSelectInventory && (
+                      <select
+                        value={row.inventory}
+                        onChange={(e) => handleInventoryChange(index, e.target.value)}
+                        className="w-48 px-3 py-2 border rounded-md border-slate-300 text-sm focus:ring-tec-blue focus:border-tec-blue"
+                        disabled={!row.productId}
+                      >
+                        <option value="">Estoque...</option>
+                        {inventoriesList.map(inv => (
+                          <option key={inv.id} value={inv.code}>
+                            {inv.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
                     {index >= 6 && (
                       <button
                         type="button"

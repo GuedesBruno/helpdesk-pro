@@ -328,6 +328,8 @@ export default function TicketDetail({ ticket, user, onBack }) {
               <span>•</span>
               <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {format(ticket.createdAt?.toDate ? ticket.createdAt.toDate() : new Date(), "dd/MM/yyyy HH:mm")}</span>
               <span>•</span>
+              <span>Solicitante: {ticket.createdBy?.name || 'N/A'}</span>
+              <span>•</span>
               <span>{ticket.departmentName || 'Geral'}</span>
             </div>
           </div>
