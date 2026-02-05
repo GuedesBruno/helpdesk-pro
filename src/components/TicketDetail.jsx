@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, arrayUnion, onSnapshot, serverTimestamp, deleteDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, onSnapshot, serverTimestamp, deleteDoc, collection, addDoc, getDocs } from 'firebase/firestore';
 import { ArrowLeft, Clock, MessageSquare, CheckCircle, XCircle, Play, Pause, FileText, Box, Truck, Trash2, User } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { format, addDays, differenceInDays } from 'date-fns';
@@ -16,6 +16,8 @@ export default function TicketDetail({ ticket, user, onBack }) {
 
   // Separation Workflow States
   const [serialNumbers, setSerialNumbers] = useState({});
+  const [inventorySelections, setInventorySelections] = useState({});
+  const [inventoriesList, setInventoriesList] = useState([]);
   const [showSeparationModal, setShowSeparationModal] = useState(false);
 
   // Transfer Logic States
@@ -61,15 +63,38 @@ export default function TicketDetail({ ticket, user, onBack }) {
         }
         if (data.products) {
           const initialSNs = {};
+          const initialInvs = {};
           data.products.forEach((p, idx) => {
             if (p.serialNumber) initialSNs[idx] = p.serialNumber;
+            if (p.inventory) {
+              initialInvs[idx] = {
+                code: p.inventory,
+                name: p.inventoryName || ''
+              };
+            }
           });
           setSerialNumbers(initialSNs);
+          setInventorySelections(initialInvs);
         }
       }
     });
     return () => unsubscribe();
   }, [ticket.id]);
+
+  // Load inventories list
+  useEffect(() => {
+    const loadInventories = async () => {
+      try {
+        const inventoriesRef = collection(db, 'inventories');
+        const snapshot = await getDocs(inventoriesRef);
+        const invs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setInventoriesList(invs.filter(inv => inv.active));
+      } catch (err) {
+        console.error('Error loading inventories:', err);
+      }
+    };
+    loadInventories();
+  }, []);
 
   useEffect(() => {
     commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -143,14 +168,33 @@ export default function TicketDetail({ ticket, user, onBack }) {
     setSerialNumbers(prev => ({ ...prev, [index]: value }));
   };
 
+  const handleInventoryChange = (index, inventoryCode) => {
+    const inventory = inventoriesList.find(inv => inv.code === inventoryCode);
+    setInventorySelections(prev => ({
+      ...prev,
+      [index]: {
+        code: inventoryCode,
+        name: inventory?.name || ''
+      }
+    }));
+  };
+
   const handleConfirmSeparation = async () => {
     const allFilled = ticket.products.every((_, idx) => serialNumbers[idx] && serialNumbers[idx].trim() !== '');
     if (!allFilled) return alert('Preencha todos os Números de Série.');
 
+    const allInventoriesFilled = ticket.products.every((_, idx) => inventorySelections[idx]?.code);
+    if (!allInventoriesFilled) return alert('Selecione o estoque para todos os produtos.');
+
     setLoading(true);
     try {
       const ticketRef = doc(db, 'tickets', ticket.id);
-      const updatedProducts = ticket.products.map((p, idx) => ({ ...p, serialNumber: serialNumbers[idx] }));
+      const updatedProducts = ticket.products.map((p, idx) => ({
+        ...p,
+        serialNumber: serialNumbers[idx],
+        inventory: inventorySelections[idx]?.code || '',
+        inventoryName: inventorySelections[idx]?.name || ''
+      }));
       const isInternal = ticket.meetingInfo?.type === 'internal';
 
       await updateDoc(ticketRef, {
@@ -399,6 +443,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produto</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-48">Número de Série (NS)</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-48">Estoque</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -411,6 +456,24 @@ export default function TicketDetail({ ticket, user, onBack }) {
                             <input type="text" value={serialNumbers[idx] || ''} onChange={(e) => handleSNChange(idx, e.target.value)} placeholder="Digite o NS..." className="w-full px-2 py-1 border rounded focus:ring-tec-blue focus:border-tec-blue text-sm" />
                           ) : (
                             <span className={`font-mono ${prod.serialNumber ? 'text-slate-700' : 'text-gray-400 italic'}`}>{prod.serialNumber || 'Pendente'}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {showSeparationActions ? (
+                            <select
+                              value={inventorySelections[idx]?.code || ''}
+                              onChange={(e) => handleInventoryChange(idx, e.target.value)}
+                              className="w-full px-2 py-1 border rounded focus:ring-tec-blue focus:border-tec-blue text-sm"
+                            >
+                              <option value="">Selecione...</option>
+                              {inventoriesList.map(inv => (
+                                <option key={inv.id} value={inv.code}>
+                                  {inv.name}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className={`${prod.inventory ? 'text-slate-700' : 'text-gray-400 italic'}`}>{prod.inventoryName || 'Pendente'}</span>
                           )}
                         </td>
                       </tr>
