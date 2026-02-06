@@ -26,6 +26,8 @@ export default function HomePage() {
 
   // Modals
   const [showExportModal, setShowExportModal] = useState(false);
+  const [exportDateFrom, setExportDateFrom] = useState('');
+  const [exportDateTo, setExportDateTo] = useState('');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -154,12 +156,33 @@ export default function HomePage() {
   const exportToCSV = () => {
     let headers, rows, filename;
 
+    // Filter tickets by date if range is provided
+    let ticketsToExport = [...tickets];
+    if (exportDateFrom || exportDateTo) {
+      ticketsToExport = tickets.filter(t => {
+        if (!t.createdAt) return false;
+        const ticketDate = t.createdAt.toDate ? t.createdAt.toDate() : new Date(t.createdAt);
+
+        if (exportDateFrom) {
+          const fromDate = new Date(exportDateFrom + 'T00:00:00');
+          if (ticketDate < fromDate) return false;
+        }
+
+        if (exportDateTo) {
+          const toDate = new Date(exportDateTo + 'T23:59:59');
+          if (ticketDate > toDate) return false;
+        }
+
+        return true;
+      });
+    }
+
     if (view === 'finance_control') {
       // Finance-specific export with product details
       headers = ['ID Chamado', 'Assunto', 'Solicitante', 'Departamento', 'Data Solicitação', 'Produto Código', 'Produto Nome', 'Número de Série'];
       rows = [];
 
-      tickets.forEach(t => {
+      ticketsToExport.forEach(t => {
         if (t.products && t.products.length > 0) {
           t.products.forEach(p => {
             rows.push([
@@ -181,7 +204,7 @@ export default function HomePage() {
     } else {
       // General export for list and resolved views
       headers = ['ID', 'Assunto', 'Status', 'Prioridade', 'Departamento', 'Solicitante', 'Atendente', 'Data Criação', 'Data Resolução'];
-      rows = tickets.map(t => [
+      rows = ticketsToExport.map(t => [
         t.id,
         `"${t.subject}"`,
         t.status,
@@ -486,14 +509,67 @@ export default function HomePage() {
       {/* Export Modal */}
       {showExportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
-            <h3 className="text-lg font-bold mb-4">Exportar Chamados</h3>
-            <p className="text-slate-600 mb-6">
-              Deseja exportar os chamados da visualização atual ({view === 'list' ? 'Abertos' : view === 'resolved' ? 'Resolvidos' : 'Controle de NFs'}) para CSV?
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold text-slate-800 mb-4">Exportar Relatório</h2>
+            <p className="text-sm text-slate-600 mb-4">
+              Selecione o período para filtrar os chamados. Deixe em branco para exportar todos da lista atual.
             </p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowExportModal(false)} className="flex-1 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Cancelar</button>
-              <button onClick={exportToCSV} className="flex-1 py-2 bg-tec-blue text-white rounded-md hover:bg-tec-blue-light">Exportar</button>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Data DE
+                </label>
+                <input
+                  type="date"
+                  value={exportDateFrom}
+                  onChange={(e) => setExportDateFrom(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-tec-blue"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Data ATÉ
+                </label>
+                <input
+                  type="date"
+                  value={exportDateTo}
+                  onChange={(e) => setExportDateTo(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-tec-blue"
+                />
+              </div>
+
+              {exportDateFrom && exportDateTo && new Date(exportDateFrom) > new Date(exportDateTo) && (
+                <p className="text-sm text-red-600">
+                  A data DE não pode ser maior que a data ATÉ
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowExportModal(false);
+                  setExportDateFrom('');
+                  setExportDateTo('');
+                }}
+                className="flex-1 px-4 py-2 text-slate-700 bg-slate-200 rounded-md hover:bg-slate-300 transition-colors font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  if (exportDateFrom && exportDateTo && new Date(exportDateFrom) > new Date(exportDateTo)) {
+                    alert('A data DE não pode ser maior que a data ATÉ');
+                    return;
+                  }
+                  exportToCSV();
+                }}
+                className="flex-1 px-4 py-2 text-white bg-tec-blue rounded-md hover:bg-blue-700 transition-colors font-semibold"
+              >
+                Exportar
+              </button>
             </div>
           </div>
         </div>
