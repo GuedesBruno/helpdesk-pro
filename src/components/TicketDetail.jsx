@@ -43,9 +43,10 @@ export default function TicketDetail({ ticket, user, onBack }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Permissions
-  const canActOnTicket = ['admin', 'atendente', 'gerente', 'financeiro', 'colaborador_atendente'].includes(user.role);
-  const canTransfer = ['admin', 'atendente', 'colaborador_atendente'].includes(user.role); // Only attendants/admins can transfer
-  const isFinance = user.role === 'admin' || user.department === 'financeiro' || user.role === 'financeiro';
+  const userRole = user.role ? user.role.toLowerCase() : '';
+  const canActOnTicket = ['admin', 'atendente', 'gerente', 'financeiro', 'colaborador_atendente'].includes(userRole);
+  const canTransfer = ['admin', 'atendente', 'colaborador_atendente'].includes(userRole); // Only attendants/admins can transfer
+  const isFinance = userRole === 'admin' || user.department === 'financeiro' || userRole === 'financeiro';
   const isFinalized = ['resolved', 'canceled', 'no_solution'].includes(status);
   const canDelete = user.role === 'admin' || (isFinalized && ticket.createdBy?.uid === user.uid);
 

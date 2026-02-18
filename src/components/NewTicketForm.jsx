@@ -17,8 +17,9 @@ export default function NewTicketForm({ user, onTicketCreated }) {
   const [loadingConfig, setLoadingConfig] = useState(true);
 
   // Permission: Only support attendants can select inventory
-  const canSelectInventory = ['admin', 'atendente', 'colaborador_atendente'].includes(user.role);
-  const canOpenOnBehalf = ['admin', 'atendente', 'colaborador_atendente', 'gerente'].includes(user.role);
+  const userRole = user.role ? user.role.toLowerCase() : '';
+  const canSelectInventory = ['admin', 'atendente', 'colaborador_atendente'].includes(userRole);
+  const canOpenOnBehalf = ['admin', 'atendente', 'colaborador_atendente', 'gerente'].includes(userRole);
 
   // On-Behalf States
   const [usersList, setUsersList] = useState([]);
