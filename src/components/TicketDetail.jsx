@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, arrayUnion, onSnapshot, serverTimestamp, deleteDoc, collection, addDoc, getDocs } from 'firebase/firestore';
-import { ArrowLeft, Clock, MessageSquare, CheckCircle, XCircle, Play, Pause, FileText, Box, Truck, Trash2, User } from 'lucide-react';
+import { doc, updateDoc, arrayUnion, onSnapshot, serverTimestamp, deleteDoc, collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { ArrowLeft, Clock, MessageSquare, CheckCircle, XCircle, Play, Pause, FileText, Box, Truck, Trash2, User, RefreshCw, Send } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -22,7 +22,8 @@ export default function TicketDetail({ ticket, user, onBack }) {
 
   // Transfer Logic States
   const [showTransferModal, setShowTransferModal] = useState(false);
-  // ... (Assume transfer logic exists if needed, keeping code structure clean)
+  const [availableAttendants, setAvailableAttendants] = useState([]);
+  const [targetAttendant, setTargetAttendant] = useState('');
 
   // NF Workflow States
   const [showEmitNFModal, setShowEmitNFModal] = useState(false);
@@ -43,6 +44,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
 
   // Permissions
   const canActOnTicket = ['admin', 'atendente', 'gerente', 'financeiro', 'colaborador_atendente'].includes(user.role);
+  const canTransfer = ['admin', 'atendente', 'colaborador_atendente'].includes(user.role); // Only attendants/admins can transfer
   const isFinance = user.role === 'admin' || user.department === 'financeiro' || user.role === 'financeiro';
   const isFinalized = ['resolved', 'canceled', 'no_solution'].includes(status);
   const canDelete = user.role === 'admin' || (isFinalized && ticket.createdBy?.uid === user.uid);
@@ -83,7 +85,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
 
   // Load inventories list
   useEffect(() => {
-    const loadInventories = async () => {
+    const loadData = async () => {
       try {
         const inventoriesRef = collection(db, 'inventories');
         const snapshot = await getDocs(inventoriesRef);
@@ -93,8 +95,27 @@ export default function TicketDetail({ ticket, user, onBack }) {
         console.error('Error loading inventories:', err);
       }
     };
-    loadInventories();
+    loadData();
   }, []);
+
+  // Load Attendants for Transfer (when modal opens)
+  useEffect(() => {
+    if (showTransferModal && availableAttendants.length === 0) {
+      const loadAttendants = async () => {
+        try {
+          const usersRef = collection(db, 'users');
+          // Fetch potential assignees: admin, atendente, colaborator_atendente, gerente
+          const q = query(usersRef, where('role', 'in', ['admin', 'atendente', 'colaborador_atendente', 'gerente']));
+          const snapshot = await getDocs(q);
+          const attendants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setAvailableAttendants(attendants.sort((a, b) => a.name.localeCompare(b.name)));
+        } catch (err) {
+          console.error("Error loading attendants:", err);
+        }
+      };
+      loadAttendants();
+    }
+  }, [showTransferModal, availableAttendants.length]);
 
   useEffect(() => {
     commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -144,6 +165,57 @@ export default function TicketDetail({ ticket, user, onBack }) {
         }),
       });
     } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const handleTransferTicket = async () => {
+    if (!targetAttendant) return alert('Selecione um atendente.');
+
+    const selectedUser = availableAttendants.find(u => u.id === targetAttendant);
+    if (!selectedUser) return;
+
+    setLoading(true);
+    try {
+      const ticketRef = doc(db, 'tickets', ticket.id);
+
+      await updateDoc(ticketRef, {
+        assignedTo: {
+          uid: selectedUser.uid || selectedUser.id,
+          name: selectedUser.name,
+          email: selectedUser.email
+        },
+        // If ticket was in queue, assign to started? 
+        ...(status === 'queue' ? { status: 'started', timeStarted: serverTimestamp() } : {})
+      });
+
+      // Add System Comment
+      await updateDoc(ticketRef, {
+        comments: arrayUnion({
+          id: Date.now().toString(),
+          text: `Chamado transferido para ${selectedUser.name} por ${user.name}.`,
+          createdAt: new Date(),
+          author: { uid: 'system', name: 'Sistema', role: 'admin' }
+        })
+      });
+
+      // Notify
+      await fetch('/api/notify-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'transfer',
+          ticket: { ...ticket, id: ticket.id, assignedTo: { name: selectedUser.name } },
+          user: { name: user.name }
+        }),
+      });
+
+      setShowTransferModal(false);
+      setTargetAttendant('');
+    } catch (err) {
+      console.error("Error transferring ticket:", err);
+      alert("Erro ao transferir chamado.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // --- Delete Ticket ---
@@ -557,6 +629,18 @@ export default function TicketDetail({ ticket, user, onBack }) {
               <button onClick={() => handleStatusChange('resolved')} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"><CheckCircle className="w-4 h-4" /> Resolver Chamado</button>
             </>
           )}
+
+          {/* Transfer Button - Only visible to admin/atendentes */}
+          {canTransfer && status !== 'resolved' && status !== 'canceled' && (
+            <button
+              onClick={() => setShowTransferModal(true)}
+              disabled={loading}
+              className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
+            >
+              <RefreshCw className="w-4 h-4" /> Transferir
+            </button>
+          )}
+
           {/* Allow Cancel generally */}
           {canActOnTicket && status !== 'resolved' && status !== 'canceled' && (
             <button
@@ -612,6 +696,35 @@ export default function TicketDetail({ ticket, user, onBack }) {
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowEmitNFModal(false)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium">Cancelar</button>
               <button onClick={handleEmitNF} className="flex-1 px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 font-medium">Registrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {showTransferModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-2xl scale-100">
+            <h3 className="text-lg font-bold text-slate-800 mb-4">Transferir Chamado</h3>
+            <p className="text-sm text-slate-600 mb-4">Selecione o atendente para quem deseja transferir este chamado.</p>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-1">Novo Responsável</label>
+              <select
+                value={targetAttendant}
+                onChange={(e) => setTargetAttendant(e.target.value)}
+                className="block w-full px-3 py-2 border rounded-md shadow-sm border-slate-300 focus:ring-tec-blue focus:border-tec-blue"
+              >
+                <option value="">Selecione...</option>
+                {availableAttendants.map(att => (
+                  <option key={att.id} value={att.id}>{att.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setShowTransferModal(false)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium">Cancelar</button>
+              <button onClick={handleTransferTicket} disabled={!targetAttendant || loading} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium disabled:opacity-50">Confirmar</button>
             </div>
           </div>
         </div>

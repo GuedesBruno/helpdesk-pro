@@ -8,6 +8,8 @@ const BRAZIL_STATES = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
 ];
 
+const sortUsers = (a, b) => a.name.localeCompare(b.name);
+
 export default function NewTicketForm({ user, onTicketCreated }) {
   const [categories, setCategories] = useState([]);
   const [productsList, setProductsList] = useState([]); // Database products
@@ -16,6 +18,11 @@ export default function NewTicketForm({ user, onTicketCreated }) {
 
   // Permission: Only support attendants can select inventory
   const canSelectInventory = ['admin', 'atendente', 'colaborador_atendente'].includes(user.role);
+  const canOpenOnBehalf = ['admin', 'atendente', 'colaborador_atendente', 'gerente'].includes(user.role);
+
+  // On-Behalf States
+  const [usersList, setUsersList] = useState([]);
+  const [selectedRequesterId, setSelectedRequesterId] = useState(''); // If empty, use currentUser
 
   // Product Autocomplete States
   const [productSearches, setProductSearches] = useState({});
@@ -94,6 +101,23 @@ export default function NewTicketForm({ user, onTicketCreated }) {
       }
     }
   }, [user]);
+
+  // Load Users for On-Behalf (if authorized)
+  useEffect(() => {
+    if (canOpenOnBehalf && usersList.length === 0) {
+      const loadUsers = async () => {
+        try {
+          const usersRef = collection(db, 'users');
+          const snapshot = await getDocs(usersRef);
+          const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setUsersList(users.sort(sortUsers));
+        } catch (err) {
+          console.error("Error loading users:", err);
+        }
+      };
+      loadUsers();
+    }
+  }, [canOpenOnBehalf, usersList.length]);
 
   // Handle Category Change
   const handleCategoryChange = (catId) => {
@@ -190,8 +214,25 @@ export default function NewTicketForm({ user, onTicketCreated }) {
 
     try {
       // Base Data
-      const department = user.department || '';
-      const departmentName = user.departmentName || '';
+      // Determine effective user (Requester)
+      let effectiveUser = user;
+      let registeredBy = null;
+
+      if (selectedRequesterId) {
+        const reqUser = usersList.find(u => u.id === selectedRequesterId);
+        if (reqUser) {
+          effectiveUser = { ...reqUser, uid: reqUser.id || reqUser.uid }; // Ensure uid is present
+          registeredBy = {
+            uid: user.uid,
+            name: user.name,
+            role: user.role,
+            email: user.email
+          };
+        }
+      }
+
+      const department = effectiveUser.department || '';
+      const departmentName = effectiveUser.departmentName || '';
 
       const ticketData = {
         subject,
@@ -202,11 +243,12 @@ export default function NewTicketForm({ user, onTicketCreated }) {
         status: 'queue',
         createdAt: serverTimestamp(),
         createdBy: {
-          uid: user.uid,
-          name: user.name,
-          email: user.email
+          uid: effectiveUser.uid,
+          name: effectiveUser.name,
+          email: effectiveUser.email
         },
         assignedTo: null,
+        ...(registeredBy ? { registeredBy } : {}),
 
         // Category Info
         categoryId,
@@ -275,6 +317,24 @@ export default function NewTicketForm({ user, onTicketCreated }) {
     <div className="p-6 bg-white rounded-lg shadow-md max-w-4xl mx-auto">
       <h2 className="mb-6 text-2xl font-bold text-slate-800">Abrir Novo Chamado</h2>
       <form onSubmit={handleSubmit} className="space-y-6">
+
+        {/* On-Behalf Selection */}
+        {canOpenOnBehalf && (
+          <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
+            <label className="block text-sm font-medium text-blue-900 mb-1">Solicitante (Abrir em nome de)</label>
+            <select
+              value={selectedRequesterId}
+              onChange={(e) => setSelectedRequesterId(e.target.value)}
+              className="block w-full px-3 py-2 border rounded-md shadow-sm border-blue-200 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Eu mesmo ({user.name})</option>
+              {usersList.map(u => (
+                <option key={u.id} value={u.id}>{u.name} ({u.departmentName || u.department || 'N/A'})</option>
+              ))}
+            </select>
+            {selectedRequesterId && <p className="text-xs text-blue-600 mt-1">O chamado será registrado em nome do usuário selecionado.</p>}
+          </div>
+        )}
 
         {/* Category Selection */}
         <div>
