@@ -93,7 +93,7 @@ service cloud.firestore {
         isAdmin() ||
         isAtendente() ||
         isColaboradorAtendente() ||
-        (isGerente() && resource.data.department == getUserDepartment()) ||
+        isGerente() ||
         (isColaborador() && resource.data.createdBy.uid == request.auth.uid)
       );
       

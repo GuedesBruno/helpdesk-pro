@@ -29,6 +29,11 @@ export default function HomePage() {
   const [exportDateFrom, setExportDateFrom] = useState('');
   const [exportDateTo, setExportDateTo] = useState('');
 
+  // Resolved View Filters
+  const [resolvedDateFrom, setResolvedDateFrom] = useState('');
+  const [resolvedDateTo, setResolvedDateTo] = useState('');
+  const [resolvedSearchTerm, setResolvedSearchTerm] = useState('');
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -70,15 +75,12 @@ export default function HomePage() {
       if (currentUser.role === 'admin') {
         q = query(ticketsRef, where('status', 'in', finalizedStatuses), orderBy('createdAt', 'desc'));
       } else if (currentUser.role === 'gerente') {
-        q = query(ticketsRef, where('status', 'in', finalizedStatuses), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
+        // Removed where('department') to avoid missing composite index; filtering below
+        q = query(ticketsRef, where('status', 'in', finalizedStatuses), orderBy('createdAt', 'desc'));
       } else if (currentUser.role === 'atendente' || currentUser.role === 'colaborador_atendente') {
         // Support attendants see all finalized tickets
-        // Other department attendants (e.g., Finance) see only their department's finalized tickets
-        if (currentUser.department === 'suporte') {
-          q = query(ticketsRef, where('status', 'in', finalizedStatuses), orderBy('createdAt', 'desc'));
-        } else {
-          q = query(ticketsRef, where('status', 'in', finalizedStatuses), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
-        }
+        // Other department attendants (e.g., Finance) see only their department's finalized tickets (filtered below)
+        q = query(ticketsRef, where('status', 'in', finalizedStatuses), orderBy('createdAt', 'desc'));
       } else {
         // Colaborador sees their own finalized tickets
         q = query(ticketsRef, where('status', 'in', finalizedStatuses), where('createdBy.uid', '==', currentUser.uid), orderBy('createdAt', 'desc'));
@@ -92,15 +94,12 @@ export default function HomePage() {
       if (currentUser.role === 'admin') {
         q = query(ticketsRef, where('status', 'in', activeStatuses), orderBy('createdAt', 'desc'));
       } else if (currentUser.role === 'gerente') {
-        q = query(ticketsRef, where('status', 'in', activeStatuses), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
+        // Removed where('department') to avoid missing composite index; filtering below
+        q = query(ticketsRef, where('status', 'in', activeStatuses), orderBy('createdAt', 'desc'));
       } else if (currentUser.role === 'atendente' || currentUser.role === 'colaborador_atendente') {
         // Support attendants see all open tickets
-        // Other department attendants (e.g., Finance) see only their department's open tickets
-        if (currentUser.department === 'suporte') {
-          q = query(ticketsRef, where('status', 'in', activeStatuses), orderBy('createdAt', 'desc'));
-        } else {
-          q = query(ticketsRef, where('status', 'in', activeStatuses), where('department', '==', currentUser.department), orderBy('createdAt', 'desc'));
-        }
+        // Other department attendants (e.g., Finance) see only their department's open tickets (filtered below)
+        q = query(ticketsRef, where('status', 'in', activeStatuses), orderBy('createdAt', 'desc'));
       } else {
         q = query(ticketsRef, where('status', 'in', activeStatuses), where('createdBy.uid', '==', currentUser.uid), orderBy('createdAt', 'desc'));
       }
@@ -114,10 +113,19 @@ export default function HomePage() {
         ...doc.data()
       }));
 
-      // Client-side filtering for finance department attendants and colaborador_atendente
-      // Finance attendants should only see equipment separation tickets
-      if ((currentUser.role === 'atendente' || currentUser.role === 'colaborador_atendente') && currentUser.department === 'financeiro') {
-        docs = docs.filter(ticket => ticket.categoryType === 'equipment_separation');
+      // Client-side filtering
+      if (currentUser.role === 'gerente') {
+        // Managers see their department's tickets, OR tickets they created themselves
+        docs = docs.filter(ticket => ticket.department === currentUser.department || ticket.createdBy?.uid === currentUser.uid);
+      } else if (currentUser.role === 'atendente' || currentUser.role === 'colaborador_atendente') {
+        if (currentUser.department !== 'suporte') {
+          // Non-support attendants only see their department's tickets
+          docs = docs.filter(ticket => ticket.department === currentUser.department);
+        }
+        if (currentUser.department === 'financeiro') {
+          // Finance attendants should only see equipment separation tickets
+          docs = docs.filter(ticket => ticket.categoryType === 'equipment_separation');
+        }
       }
 
       setTickets(docs);
@@ -400,22 +408,156 @@ export default function HomePage() {
           </>
         )}
 
-        {view === 'resolved' && (
-          <>
-            <h2 className="mb-6 text-2xl font-bold text-slate-800">Finalizados</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {tickets.length > 0 ? (
-                tickets.map(ticket => (
-                  <TicketCard key={ticket.id} ticket={ticket} onClick={() => handleTicketClick(ticket)} />
-                ))
-              ) : (
-                <div className="col-span-full py-16 text-center text-slate-500 bg-white rounded-xl shadow-sm">
-                  <p className="text-lg font-medium">Nenhum chamado finalizado encontrado.</p>
+        {view === 'resolved' && (() => {
+          // Filter tickets for resolved view
+          const filteredResolved = tickets.filter(t => {
+            // Apply Date Filter based on timeResolved OR createdAt if timeResolved is missing
+            if (resolvedDateFrom || resolvedDateTo) {
+              const dateField = t.timeResolved || t.createdAt;
+              if (dateField) {
+                const itemDate = dateField.toDate ? dateField.toDate() : new Date(dateField);
+
+                if (resolvedDateFrom) {
+                  const fromDate = new Date(resolvedDateFrom + 'T00:00:00');
+                  if (itemDate < fromDate) return false;
+                }
+
+                if (resolvedDateTo) {
+                  const toDate = new Date(resolvedDateTo + 'T23:59:59');
+                  if (itemDate > toDate) return false;
+                }
+              }
+            }
+
+            // Apply Search Term Filter
+            if (resolvedSearchTerm) {
+              const term = resolvedSearchTerm.toLowerCase();
+              const matchSubject = t.subject?.toLowerCase().includes(term);
+              const matchTicketId = t.id?.toLowerCase().includes(term);
+              const matchUser = t.createdBy?.name?.toLowerCase().includes(term);
+              const matchAssigned = t.assignedTo?.name?.toLowerCase().includes(term);
+
+              if (!matchSubject && !matchTicketId && !matchUser && !matchAssigned) {
+                return false;
+              }
+            }
+
+            return true;
+          });
+
+          return (
+            <div className="flex flex-col h-full">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  Finalizados
+                </h2>
+
+                {/* Filters */}
+                <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-lg shadow-sm">
+                  <input
+                    type="text"
+                    placeholder="Buscar assunto, usuário ou ID..."
+                    value={resolvedSearchTerm}
+                    onChange={(e) => setResolvedSearchTerm(e.target.value)}
+                    className="px-3 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-tec-blue min-w-[200px]"
+                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-500 font-medium">De:</span>
+                    <input
+                      type="date"
+                      value={resolvedDateFrom}
+                      onChange={(e) => setResolvedDateFrom(e.target.value)}
+                      className="px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-tec-blue text-slate-600"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-500 font-medium">Até:</span>
+                    <input
+                      type="date"
+                      value={resolvedDateTo}
+                      onChange={(e) => setResolvedDateTo(e.target.value)}
+                      className="px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-tec-blue text-slate-600"
+                    />
+                  </div>
+                  {(resolvedDateFrom || resolvedDateTo || resolvedSearchTerm) && (
+                    <button
+                      onClick={() => {
+                        setResolvedDateFrom('');
+                        setResolvedDateTo('');
+                        setResolvedSearchTerm('');
+                      }}
+                      className="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1"
+                    >
+                      Limpar Filtros
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
+
+              <div className="bg-white rounded-lg shadow overflow-hidden flex-1 flex flex-col">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Chamado</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Informações</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Data Resolução</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredResolved.map(t => (
+                        <tr key={t.id} className="hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => handleTicketClick(t)}>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold text-slate-900 line-clamp-2">{t.subject}</span>
+                              <span className="text-xs font-mono text-slate-500 mt-1">#{t.id.slice(0, 8)}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col text-sm text-slate-600">
+                              <span className="flex items-center gap-1"><Users className="w-3 h-3 text-slate-400" /> {t.createdBy?.name || 'Desconhecido'}</span>
+                              <span className="flex items-center gap-1 mt-1 text-xs"><Building2 className="w-3 h-3 text-slate-400" /> {t.departmentName || '-'}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                            {t.timeResolved?.toDate ? t.timeResolved.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : (t.createdAt?.toDate ? t.createdAt.toDate().toLocaleDateString('pt-BR') : '-')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {t.status === 'resolved' ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 gap-1">
+                                <CheckCircle className="w-3 h-3" /> Resolvido
+                              </span>
+                            ) : t.status === 'canceled' ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 gap-1">
+                                <X className="w-3 h-3" /> Cancelado
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 gap-1">
+                                <AlertTriangle className="w-3 h-3" /> Sem Solução
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredResolved.length === 0 && (
+                        <tr>
+                          <td colSpan="4" className="px-6 py-12 text-center">
+                            <div className="flex flex-col items-center justify-center text-slate-500">
+                              <CheckCircle className="w-12 h-12 mb-3 text-slate-300" />
+                              <p className="text-base font-medium">Nenhum chamado encontrado com esses filtros.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-          </>
-        )}
+          );
+        })()}
 
         {view === 'finance_control' && (
           <>

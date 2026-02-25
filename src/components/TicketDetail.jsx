@@ -5,7 +5,7 @@ import { doc, updateDoc, arrayUnion, onSnapshot, serverTimestamp, deleteDoc, col
 import { ArrowLeft, Clock, MessageSquare, CheckCircle, XCircle, Play, Pause, FileText, Box, Truck, Trash2, User, RefreshCw, Send } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { format, addDays, differenceInDays } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 
 export default function TicketDetail({ ticket, user, onBack }) {
   const [comments, setComments] = useState([]);
