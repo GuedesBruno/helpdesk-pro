@@ -2,10 +2,10 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request) {
   try {
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const { to, subject, html, type, ticketData } = await request.json();
 
     // Validar dados
@@ -25,7 +25,7 @@ export async function POST(request) {
     // Enviar email
     const { data, error } = await resend.emails.send({
       from: fromEmail,
-      to: [to],
+      to: Array.isArray(to) ? to : [to],
       subject: subject,
       html: emailHtml,
     });
@@ -35,6 +35,7 @@ export async function POST(request) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    console.log('✅ Email processado pelo Resend. ID:', data?.id);
     return NextResponse.json({ success: true, id: data?.id });
   } catch (error) {
     console.error('Erro ao enviar email:', error);
@@ -46,9 +47,11 @@ export async function POST(request) {
 }
 
 // Templates de email
-function generateEmailTemplate(type, data) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const ticketUrl = `${baseUrl}/?ticket=${data.ticketId}`;
+function generateEmailTemplate(type, data = {}) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL 
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    
+  const ticketUrl = `${baseUrl}/?ticket=${data.ticketId || ''}`;
 
   const templates = {
     ticket_assigned: `
