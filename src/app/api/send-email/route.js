@@ -23,14 +23,19 @@ export async function POST(request) {
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <onboarding@resend.dev>';
 
     // Enviar email
-    const data = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: fromEmail,
       to: [to],
       subject: subject,
       html: emailHtml,
     });
 
-    return NextResponse.json({ success: true, id: data.id });
+    if (error) {
+      console.error('❌ Erro na API do Resend:', error);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, id: data?.id });
   } catch (error) {
     console.error('Erro ao enviar email:', error);
     return NextResponse.json(
