@@ -23,7 +23,7 @@ export async function POST(request) {
 
     const supportEmail = 'suporte@tecassistiva.com.br';
     const financeEmail = 'administrativo1@tecassistiva.com.br';
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <onboarding@resend.dev>';
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <noreply@site.tecassistiva.com.br>';
 
     console.log('📧 [EMAIL API] From Email:', fromEmail);
     console.log('📧 [EMAIL API] Resend API Key exists:', !!process.env.RESEND_API_KEY);
@@ -280,18 +280,23 @@ export async function POST(request) {
     console.log('📧 [EMAIL API] Assunto:', subject);
     console.log('📧 [EMAIL API] Tentando enviar email...');
 
-    const data = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: fromEmail,
       to: [recipientEmail],
       subject: subject,
       html: emailHtml,
     });
 
+    if (error) {
+      console.error('❌ [EMAIL API] Erro no Resend:', error);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     console.log('✅ [EMAIL API] Email enviado com sucesso!');
-    console.log('✅ [EMAIL API] ID:', data.id);
+    console.log('✅ [EMAIL API] ID:', data?.id);
     console.log('✅ [EMAIL API] Enviado para:', recipientEmail);
 
-    return NextResponse.json({ success: true, id: data.id, sentTo: recipientEmail });
+    return NextResponse.json({ success: true, id: data?.id, sentTo: recipientEmail });
   } catch (error) {
     console.error('Erro ao enviar notificação:', error);
     return NextResponse.json(
