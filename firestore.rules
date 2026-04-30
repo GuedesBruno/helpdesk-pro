@@ -170,5 +170,14 @@ service cloud.firestore {
       // Only admins can manage inventories
       allow create, update, delete: if isAdmin();
     }
+
+    // Licenses collection
+    match /licenses/{licenseId} {
+      // Authenticated users can read licenses
+      allow read: if isAuthenticated();
+      
+      // Only admins can manage licenses
+      allow create, update, delete: if isAdmin();
+    }
   }
 }
