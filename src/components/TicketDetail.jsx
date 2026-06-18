@@ -273,8 +273,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
       await updateDoc(ticketRef, {
         products: updatedProducts,
         separationConfirmed: true,
-        status: isInternal ? 'resolved' : 'waiting_user', // Manually wait for user request
-        ...(isInternal ? { timeResolved: serverTimestamp() } : {})
+        status: isInternal ? 'separated_no_nf' : 'waiting_user'
       });
 
       // Add System Comment
@@ -311,6 +310,34 @@ export default function TicketDetail({ ticket, user, onBack }) {
       variant: 'primary',
       confirmText: 'Solicitar',
       onConfirm: executeRequestNF
+    });
+  };
+
+  const executeNoNF = async () => {
+    setLoading(true);
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    try {
+      await updateDoc(doc(db, 'tickets', ticket.id), { status: 'separated_no_nf' });
+      
+      await updateDoc(doc(db, 'tickets', ticket.id), {
+        comments: arrayUnion({
+          id: Date.now().toString(),
+          text: `Saída sem Nota Fiscal confirmada. Aguardando devolução dos equipamentos.`,
+          createdAt: new Date(),
+          author: { uid: user.uid, name: user.name, role: user.role }
+        })
+      });
+    } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const handleNoNF = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Saída sem Nota Fiscal',
+      message: 'Confirma a saída dos equipamentos sem emissão de Nota Fiscal?',
+      variant: 'primary',
+      confirmText: 'Confirmar Saída',
+      onConfirm: executeNoNF
     });
   };
 
@@ -401,7 +428,8 @@ export default function TicketDetail({ ticket, user, onBack }) {
       resolved: 'bg-green-100 text-green-800',
       canceled: 'bg-gray-100 text-gray-800',
       waiting_nf: 'bg-pink-100 text-pink-800',
-      nf_emitted: 'bg-indigo-100 text-indigo-800'
+      nf_emitted: 'bg-indigo-100 text-indigo-800',
+      separated_no_nf: 'bg-teal-100 text-teal-800'
     };
     const labels = {
       queue: 'Na Fila',
@@ -411,7 +439,8 @@ export default function TicketDetail({ ticket, user, onBack }) {
       resolved: 'Resolvido',
       canceled: 'Cancelado',
       waiting_nf: 'Emissão de NF',
-      nf_emitted: 'NF Emitida / Em Trânsito'
+      nf_emitted: 'NF Emitida / Em Trânsito',
+      separated_no_nf: 'Sem NF / Em Trânsito'
     };
     return <span className={`px-2 py-1 rounded-full text-xs font-semibold ${styles[s] || styles.queue}`}>{labels[s] || s}</span>;
   };
@@ -427,8 +456,8 @@ export default function TicketDetail({ ticket, user, onBack }) {
   // Finance Actions
   // waiting_nf -> can emit NF
   const showEmitNF = status === 'waiting_nf' && isFinance;
-  // nf_emitted -> can return NF
-  const showReturnNF = status === 'nf_emitted' && isFinance;
+  // nf_emitted -> can return NF, separated_no_nf -> any attendant can return
+  const showReturnNF = (status === 'nf_emitted' && isFinance) || (status === 'separated_no_nf' && canActOnTicket);
 
   return (
     <div className="flex flex-col h-full bg-white rounded-lg shadow-xl overflow-hidden">
@@ -567,9 +596,12 @@ export default function TicketDetail({ ticket, user, onBack }) {
 
           {/* Action Bunttons for Flows */}
           {showRequestNF && (
-            <div className="mb-8 p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-center justify-between">
-              <div><h4 className="font-bold text-orange-900">Separação Confirmada!</h4><p className="text-sm text-orange-700">Solicite a emissão da NF para prosseguir.</p></div>
-              <button onClick={handleRequestNF} disabled={loading} className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-semibold shadow-sm">{loading ? 'Enviando...' : 'Solicitar Emissão de NF'}</button>
+            <div className="mb-8 p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-center justify-between flex-wrap gap-4">
+              <div><h4 className="font-bold text-orange-900">Separação Confirmada!</h4><p className="text-sm text-orange-700">Solicite a emissão da NF ou confirme a saída sem nota para prosseguir.</p></div>
+              <div className="flex gap-2">
+                <button onClick={handleNoNF} disabled={loading} className="px-4 py-2 bg-slate-600 text-white rounded-md hover:bg-slate-700 font-semibold shadow-sm">{loading ? '...' : 'Saída sem Nota'}</button>
+                <button onClick={handleRequestNF} disabled={loading} className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-semibold shadow-sm">{loading ? 'Enviando...' : 'Solicitar Emissão de NF'}</button>
+              </div>
             </div>
           )}
 

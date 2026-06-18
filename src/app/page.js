@@ -90,7 +90,7 @@ export default function HomePage() {
       // Finance view - Tickets waiting for NF or with NF Emitted (Pending Return)
       q = query(ticketsRef, where('status', 'in', ['waiting_nf', 'nf_emitted']), orderBy('createdAt', 'desc'));
     } else if (view === 'list') { // Open tickets - exclude finalized statuses
-      const activeStatuses = ['queue', 'started', 'analyzing', 'waiting_user', 'waiting_nf', 'nf_emitted'];
+      const activeStatuses = ['queue', 'started', 'analyzing', 'waiting_user', 'waiting_nf', 'nf_emitted', 'separated_no_nf'];
 
       if (currentUser.role === 'admin') {
         q = query(ticketsRef, where('status', 'in', activeStatuses), orderBy('createdAt', 'desc'));

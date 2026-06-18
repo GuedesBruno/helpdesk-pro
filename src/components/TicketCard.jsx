@@ -10,6 +10,7 @@ export default function TicketCard({ ticket, onClick }) {
     waiting_user: 'Aguardando Retorno',
     waiting_nf: 'Aguardando Emissão de NF',
     nf_emitted: 'NF Emitida',
+    separated_no_nf: 'Sem NF / Em Trânsito',
     canceled: 'Cancelado',
     resolved: 'Resolvido',
     // Fallback para status antigos
@@ -17,23 +18,24 @@ export default function TicketCard({ ticket, onClick }) {
     progress: 'Em Progresso',
   };
 
-  const statusColors = {
-    queue: 'bg-gray-500',
-    started: 'bg-blue-500',
-    analyzing: 'bg-yellow-500',
-    waiting_user: 'bg-orange-500',
-    waiting_nf: 'bg-purple-500',
-    nf_emitted: 'bg-indigo-500',
-    canceled: 'bg-red-500',
-    resolved: 'bg-green-500',
+  const statusStyles = {
+    queue: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    started: 'bg-sky-50 text-sky-700 border-sky-200',
+    analyzing: 'bg-amber-50 text-amber-700 border-amber-200',
+    waiting_user: 'bg-orange-50 text-orange-700 border-orange-200',
+    waiting_nf: 'bg-purple-50 text-purple-700 border-purple-200',
+    nf_emitted: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    separated_no_nf: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    canceled: 'bg-rose-50 text-rose-700 border-rose-200',
+    resolved: 'bg-blue-50 text-blue-700 border-blue-200',
     // Fallback para status antigos
-    open: 'bg-green-500',
-    progress: 'bg-yellow-500',
+    open: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    progress: 'bg-sky-50 text-sky-700 border-sky-200',
   };
 
   const { status, subject, createdAt, department, assignedTo } = ticket;
   const statusLabel = statusLabels[status] || 'Desconhecido';
-  const statusColor = statusColors[status] || 'bg-gray-400';
+  const statusStyle = statusStyles[status] || 'bg-blue-50 text-blue-700 border-blue-200';
 
   const getDepartmentLabel = (dept) => {
     const labels = {
@@ -72,14 +74,21 @@ export default function TicketCard({ ticket, onClick }) {
       `}
     >
       {/* Header com badges */}
-      <div className="flex items-center justify-between mb-3">
-        <span className={`
-          px-3 py-1.5 text-xs font-semibold rounded-full
-          ${statusColor} text-white
-          shadow-sm
-        `}>
-          {statusLabel}
-        </span>
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {ticket.categoryName && (
+            <span className="px-3 py-1 text-xs font-medium rounded-full bg-violet-100 text-violet-800 border border-violet-200 shadow-sm">
+              {ticket.categoryName}
+            </span>
+          )}
+          <span className={`
+            px-3 py-1 text-xs font-medium rounded-full border
+            ${statusStyle}
+            shadow-sm
+          `}>
+            {statusLabel}
+          </span>
+        </div>
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <Calendar className="w-3.5 h-3.5" />
           <span>{formattedDate}</span>
