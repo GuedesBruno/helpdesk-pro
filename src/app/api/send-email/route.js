@@ -20,7 +20,7 @@ export async function POST(request) {
     const emailHtml = html || generateEmailTemplate(type, ticketData);
 
     // Usar email do .env ou fallback
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <noreply@site.tecassistiva.com.br>';
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <onboarding@resend.dev>';
 
     console.log(`📨 Tentando enviar email de: [${fromEmail}] para: [${to}]`);
 

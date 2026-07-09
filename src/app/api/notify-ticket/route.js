@@ -21,9 +21,9 @@ export async function POST(request) {
       );
     }
 
-    const supportEmail = 'suporte@tecassistiva.com.br';
+    const supportEmail = 'marketing@tecassistiva.com.br';
     const financeEmail = 'administrativo1@tecassistiva.com.br';
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <noreply@site.tecassistiva.com.br>';
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <onboarding@resend.dev>';
 
     console.log('📧 [EMAIL API] From Email:', fromEmail);
     console.log('📧 [EMAIL API] Resend API Key exists:', !!process.env.RESEND_API_KEY);
