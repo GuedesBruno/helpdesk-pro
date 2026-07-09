@@ -21,7 +21,7 @@ export async function POST(request) {
       );
     }
 
-    const supportEmail = 'marketing@tecassistiva.com.br';
+    const supportEmail = 'suporte@tecassistiva.com.br';
     const financeEmail = 'administrativo1@tecassistiva.com.br';
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'Helpdesk Tecassistiva <onboarding@resend.dev>';
 
@@ -82,6 +82,7 @@ export async function POST(request) {
       <div style="background: white; padding: 15px; border-radius: 6px; margin: 20px 0;">
         <p style="margin: 5px 0;"><strong>ID do Chamado:</strong> ${ticket.id}</p>
         <p style="margin: 5px 0;"><strong>Assunto:</strong> ${ticket.subject}</p>
+        <p style="margin: 5px 0;"><strong>Categoria:</strong> ${ticket.categoryName || 'N/A'}</p>
         <p style="margin: 5px 0;"><strong>Solicitante:</strong> ${ticket.createdBy?.name || 'N/A'} (${ticket.createdBy?.email || 'N/A'})</p>
         <p style="margin: 5px 0;"><strong>Prioridade:</strong> ${priorityLabels[ticket.priority] || ticket.priority}</p>
         <p style="margin: 5px 0;"><strong>Status Atual:</strong> ${statusLabels[ticket.status] || ticket.status}</p>
@@ -91,7 +92,7 @@ export async function POST(request) {
 
     switch (type) {
       case 'new':
-        subject = `🆕 Novo Chamado: ${ticket.subject}`;
+        subject = `🆕 Novo Chamado: [${ticket.categoryName || 'Geral'}] ${ticket.subject}`;
         emailHtml = baseTemplate('Novo Chamado Criado', `
           <p style="color: #374151; font-size: 16px;">
             Um novo chamado foi criado no sistema.
