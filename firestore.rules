@@ -104,6 +104,7 @@ service cloud.firestore {
       // - Admin and Atendente can update any ticket
       // - Colaborador/Atendente can update any ticket (for attendance)
       // - Gerente can update tickets from their department (add usage notes/comments)
+      // - Gerente of finance/admin can update equipment separation tickets
       // - Colaborador can only update their own tickets AND cannot change status
       //   EXCEPT: Can change from waiting_user to analyzing (when responding)
       //   OR: reopen resolved ticket
@@ -112,6 +113,7 @@ service cloud.firestore {
         isAtendente() ||
         isColaboradorAtendente() ||
         (isGerente() && resource.data.department == getUserDepartment()) ||
+        (isGerente() && (getUserDepartment() == 'financeiro' || getUserDepartment() == 'administrativo' || getUserDepartment() == 'adm_financeiro') && resource.data.categoryType == 'equipment_separation') ||
         (isColaborador() && 
          resource.data.createdBy.uid == request.auth.uid && (
            request.resource.data.status == resource.data.status ||  // Status unchanged

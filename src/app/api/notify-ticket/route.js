@@ -182,6 +182,24 @@ export async function POST(request) {
           </div>
         `, 'Acessar para Emitir NF');
         break;
+      case 'nf_reminder':
+        subject = `⚠️ ALERTA: Prazo da Nota Fiscal acabando em 10 dias! (${ticket.subject})`;
+        const reminderDeadline = ticket.nfReturnDeadline 
+          ? new Date(ticket.nfReturnDeadline).toLocaleDateString('pt-BR')
+          : 'N/A';
+        emailHtml = baseTemplate('Prazo de NF Vencendo!', `
+          <p style="color: #b91c1c; font-size: 16px; font-weight: bold;">
+            Atenção! Faltam apenas 10 dias para o fim do prazo de devolução dos equipamentos.
+          </p>
+          ${ticketInfo}
+          <div style="background: #fef2f2; padding: 15px; border-radius: 6px; border-left: 4px solid #dc2626;">
+            <p style="margin: 0; color: #991b1b;"><strong>Dados da Nota Fiscal:</strong></p>
+            <p style="margin: 5px 0 0 0; color: #991b1b;"><strong>Número:</strong> ${ticket.nfNumber || 'N/A'}</p>
+            <p style="margin: 5px 0 0 0; color: #991b1b;"><strong>Prazo Limite:</strong> ${reminderDeadline}</p>
+            <p style="margin: 10px 0 0 0;">Por favor, providencie o retorno dos equipamentos o mais rápido possível e registre a devolução no sistema.</p>
+          </div>
+        `, 'Acessar Chamado');
+        break;
 
       case 'nf_emitted':
         subject = `🧾 Nota Fiscal Emitida: ${ticket.subject}`;
@@ -275,6 +293,11 @@ export async function POST(request) {
     // NF Devolvida vai APENAS para FINANCEIRO (Confirmação interna)
     if (type === 'nf_returned') {
       recipientEmail = financeEmail;
+    }
+
+    // NF Reminder (Aviso de 10 dias) vai para o criador do chamado (colaborador)
+    if (type === 'nf_reminder') {
+      recipientEmail = ticket.createdBy?.email || financeEmail;
     }
 
     console.log('📧 [EMAIL API] Destinatário determinado:', recipientEmail);
