@@ -119,13 +119,12 @@ export default function HomePage() {
         // Managers see their department's tickets, OR tickets they created themselves
         docs = docs.filter(ticket => ticket.department === currentUser.department || ticket.createdBy?.uid === currentUser.uid);
       } else if (currentUser.role === 'atendente' || currentUser.role === 'colaborador_atendente') {
-        if (currentUser.department !== 'suporte') {
-          // Non-support attendants only see their department's tickets
-          docs = docs.filter(ticket => ticket.department === currentUser.department);
-        }
-        if (currentUser.department === 'financeiro') {
-          // Finance attendants should only see equipment separation tickets
+        if (currentUser.department === 'financeiro' || currentUser.department === 'administrativo') {
+          // Finance/Admin attendants should see equipment separation tickets from ANY department
           docs = docs.filter(ticket => ticket.categoryType === 'equipment_separation');
+        } else if (currentUser.department !== 'suporte') {
+          // Other non-support attendants only see their department's tickets
+          docs = docs.filter(ticket => ticket.department === currentUser.department);
         }
       }
 

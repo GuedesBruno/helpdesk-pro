@@ -116,7 +116,9 @@ service cloud.firestore {
          resource.data.createdBy.uid == request.auth.uid && (
            request.resource.data.status == resource.data.status ||  // Status unchanged
            (resource.data.status == 'waiting_user' && request.resource.data.status == 'analyzing') || // Responding to request
-           (resource.data.status == 'resolved' && request.resource.data.status == 'analyzing') // Reopening ticket
+           (resource.data.status == 'resolved' && request.resource.data.status == 'analyzing') || // Reopening ticket
+           request.resource.data.status == 'waiting_nf' || // Requesting NF
+           request.resource.data.status == 'separated_no_nf' // Proceeding without NF
          ))
       );
       
