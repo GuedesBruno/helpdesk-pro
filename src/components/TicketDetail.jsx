@@ -46,7 +46,7 @@ export default function TicketDetail({ ticket, user, onBack }) {
   const userRole = user.role ? user.role.toLowerCase() : '';
   const canActOnTicket = ['admin', 'atendente', 'gerente', 'financeiro', 'colaborador_atendente'].includes(userRole);
   const canTransfer = ['admin', 'atendente', 'colaborador_atendente'].includes(userRole); // Only attendants/admins can transfer
-  const isFinance = userRole === 'admin' || user.department === 'financeiro' || userRole === 'financeiro';
+  const isFinance = userRole === 'admin' || ['financeiro', 'administrativo', 'adm_financeiro'].includes(user.department);
   const isFinalized = ['resolved', 'canceled', 'no_solution'].includes(status);
   const canDelete = user.role === 'admin' || (isFinalized && ticket.createdBy?.uid === user.uid);
 
