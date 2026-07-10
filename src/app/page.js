@@ -116,10 +116,15 @@ export default function HomePage() {
 
       // Client-side filtering
       if (currentUser.role === 'gerente') {
-        // Managers see their department's tickets, OR tickets they created themselves
-        docs = docs.filter(ticket => ticket.department === currentUser.department || ticket.createdBy?.uid === currentUser.uid);
+        if (['financeiro', 'administrativo', 'adm_financeiro'].includes(currentUser.department)) {
+          // Finance/Admin managers see their own department's tickets + ALL equipment separation tickets
+          docs = docs.filter(ticket => ticket.department === currentUser.department || ticket.categoryType === 'equipment_separation' || ticket.createdBy?.uid === currentUser.uid);
+        } else {
+          // Other managers see their department's tickets, OR tickets they created themselves
+          docs = docs.filter(ticket => ticket.department === currentUser.department || ticket.createdBy?.uid === currentUser.uid);
+        }
       } else if (currentUser.role === 'atendente' || currentUser.role === 'colaborador_atendente') {
-        if (currentUser.department === 'financeiro' || currentUser.department === 'administrativo') {
+        if (['financeiro', 'administrativo', 'adm_financeiro'].includes(currentUser.department)) {
           // Finance/Admin attendants should see equipment separation tickets from ANY department
           docs = docs.filter(ticket => ticket.categoryType === 'equipment_separation');
         } else if (currentUser.department !== 'suporte') {
@@ -143,9 +148,9 @@ export default function HomePage() {
   // Permission helpers
   const canViewFinance = currentUser && (
     currentUser.role === 'admin' ||
-    (currentUser.role === 'gerente' && currentUser.department === 'financeiro') ||
-    (currentUser.role === 'atendente' && currentUser.department === 'financeiro') ||
-    (currentUser.role === 'colaborador_atendente' && currentUser.department === 'financeiro')
+    (currentUser.role === 'gerente' && ['financeiro', 'administrativo', 'adm_financeiro'].includes(currentUser.department)) ||
+    (currentUser.role === 'atendente' && ['financeiro', 'administrativo', 'adm_financeiro'].includes(currentUser.department)) ||
+    (currentUser.role === 'colaborador_atendente' && ['financeiro', 'administrativo', 'adm_financeiro'].includes(currentUser.department))
   );
 
   const handleSignOut = () => signOut(auth);
