@@ -88,9 +88,9 @@ export default function HomePage() {
       }
     } else if (view === 'finance_control') {
       // Finance view - Tickets waiting for NF or with NF Emitted (Pending Return)
-      q = query(ticketsRef, where('status', 'in', ['waiting_nf', 'nf_emitted']), orderBy('createdAt', 'desc'));
+      q = query(ticketsRef, where('status', 'in', ['waiting_nf', 'nf_emitted', 'waiting_return', 'waiting_nf_closure']), orderBy('createdAt', 'desc'));
     } else if (view === 'list') { // Open tickets - exclude finalized statuses
-      const activeStatuses = ['queue', 'started', 'analyzing', 'waiting_user', 'waiting_nf', 'nf_emitted', 'separated_no_nf'];
+      const activeStatuses = ['queue', 'started', 'analyzing', 'waiting_user', 'waiting_nf', 'nf_emitted', 'separated_no_nf', 'waiting_return', 'waiting_nf_closure'];
 
       if (currentUser.role === 'admin') {
         q = query(ticketsRef, where('status', 'in', activeStatuses), orderBy('createdAt', 'desc'));
@@ -599,7 +599,7 @@ export default function HomePage() {
                   {tickets.map(t => {
                     // Deadline Alert Logic
                     let deadlineAlert = null;
-                    if (t.status === 'nf_emitted' && t.nfReturnDeadline) {
+                    if (['nf_emitted', 'waiting_return', 'waiting_nf_closure'].includes(t.status) && t.nfReturnDeadline) {
                       const deadlineDate = t.nfReturnDeadline.toDate ? t.nfReturnDeadline.toDate() : new Date(t.nfReturnDeadline);
                       const today = new Date();
                       const diffDays = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
@@ -622,7 +622,11 @@ export default function HomePage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           {t.status === 'waiting_nf'
                             ? <span className="px-2 py-1 bg-pink-100 text-pink-800 rounded-full text-xs font-semibold">Emitir NF</span>
-                            : <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-semibold">Aguardando Retorno</span>
+                            : t.status === 'waiting_return'
+                              ? <span className="px-2 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold">Devolução Solicitada</span>
+                              : t.status === 'waiting_nf_closure'
+                                ? <span className="px-2 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-semibold">Dar Baixa na NF</span>
+                                : <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-semibold">Aguardando Retorno</span>
                           }
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">

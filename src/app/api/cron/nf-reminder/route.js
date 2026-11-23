@@ -15,9 +15,9 @@ export async function GET(request) {
 
     const today = new Date();
     
-    // 2. Fetch all tickets with nf_emitted
+    // 2. Fetch all tickets with the NF still open (emitted, return requested or waiting for the NF closure)
     const snapshot = await adminDb.collection('tickets')
-      .where('status', '==', 'nf_emitted')
+      .where('status', 'in', ['nf_emitted', 'waiting_return', 'waiting_nf_closure'])
       .get();
 
     let processedCount = 0;

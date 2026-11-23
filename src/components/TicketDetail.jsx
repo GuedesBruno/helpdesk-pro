@@ -47,6 +47,11 @@ export default function TicketDetail({ ticket, user, onBack }) {
   const canActOnTicket = ['admin', 'atendente', 'gerente', 'financeiro', 'colaborador_atendente'].includes(userRole);
   const canTransfer = ['admin', 'atendente', 'colaborador_atendente'].includes(userRole); // Only attendants/admins can transfer
   const isFinance = userRole === 'admin' || ['financeiro', 'administrativo', 'adm_financeiro'].includes(user.department);
+  // Devolução da separação (mesma regra do ERP): o vendedor SOLICITA, o Suporte CONFIRMA e, com NF, o Financeiro DÁ BAIXA.
+  const isTicketCreator = ticket.createdBy?.uid === user.uid;
+  const isManagerOfTicketDepartment = userRole === 'gerente' && ticket.department === user.department;
+  const canRequestReturn = userRole === 'admin' || isTicketCreator || isManagerOfTicketDepartment;
+  const canConfirmReturn = userRole === 'admin' || (['atendente', 'colaborador_atendente'].includes(userRole) && user.department === 'suporte');
   const isFinalized = ['resolved', 'canceled', 'no_solution'].includes(status);
   const canDelete = user.role === 'admin' || (isFinalized && ticket.createdBy?.uid === user.uid);
 
@@ -386,36 +391,105 @@ export default function TicketDetail({ ticket, user, onBack }) {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  const executeReturnNF = async () => {
+  // --- Devolução dos equipamentos: solicitar (vendedor) → confirmar (Suporte) → dar baixa na NF (Financeiro) ---
+  const systemComment = (text) => arrayUnion({
+    id: Date.now().toString(),
+    text,
+    createdAt: new Date(),
+    author: { uid: user.uid, name: user.name, role: user.role }
+  });
+
+  const notifyReturn = async (type) => {
+    try {
+      await fetch('/api/notify-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, ticket: { ...ticket, id: ticket.id }, user: { name: user.name, role: user.role } }),
+      });
+    } catch (err) { console.error(err); }
+  };
+
+  // 1) O vendedor (ou o gerente do departamento dele, ou o admin) avisa que os equipamentos voltaram
+  const executeRequestReturn = async () => {
+    setLoading(true);
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    try {
+      await updateDoc(doc(db, 'tickets', ticket.id), {
+        status: 'waiting_return',
+        returnRequestedAt: serverTimestamp(),
+        returnRequestedBy: { uid: user.uid, name: user.name },
+        comments: systemComment(`${user.name} solicitou a devolução: os equipamentos voltaram. Aguardando o Suporte confirmar o recebimento.`)
+      });
+      await notifyReturn('return_requested');
+    } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const handleRequestReturn = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Solicitar Devolução',
+      message: 'Os equipamentos voltaram? O Suporte será avisado para confirmar o recebimento.',
+      variant: 'primary',
+      confirmText: 'Solicitar Devolução',
+      onConfirm: executeRequestReturn
+    });
+  };
+
+  // 2) O Suporte confirma o recebimento. Com NF, o chamado vai para o Financeiro dar baixa; sem NF, é resolvido.
+  const executeConfirmReturn = async () => {
+    setLoading(true);
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    try {
+      const withNF = !!ticket.nfNumber;
+      await updateDoc(doc(db, 'tickets', ticket.id), {
+        status: withNF ? 'waiting_nf_closure' : 'resolved',
+        returnConfirmedAt: serverTimestamp(),
+        returnConfirmedBy: { uid: user.uid, name: user.name },
+        ...(withNF ? {} : { timeResolved: serverTimestamp() }),
+        comments: systemComment(withNF
+          ? `${user.name} confirmou o recebimento dos equipamentos. Aguardando o Financeiro dar baixa na NF ${ticket.nfNumber}.`
+          : `${user.name} confirmou o recebimento dos equipamentos. Chamado resolvido (saída sem nota fiscal).`)
+      });
+      if (withNF) await notifyReturn('return_confirmed');
+    } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const handleConfirmReturn = () => {
+    const withNF = !!ticket.nfNumber;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Confirmar Devolução',
+      message: withNF
+        ? 'Confirmar que os equipamentos foram recebidos? O chamado segue para o Financeiro dar baixa na Nota Fiscal.'
+        : 'Confirmar que os equipamentos foram recebidos? Isso finalizará o chamado.',
+      variant: 'primary',
+      confirmText: withNF ? 'Confirmar Recebimento' : 'Confirmar e Finalizar',
+      onConfirm: executeConfirmReturn
+    });
+  };
+
+  // 3) O Financeiro dá baixa na NF e o chamado é finalizado
+  const executeCloseNF = async () => {
     setLoading(true);
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
     try {
       await updateDoc(doc(db, 'tickets', ticket.id), {
         status: 'resolved',
         nfReturnDate: serverTimestamp(),
-        timeResolved: serverTimestamp()
-      });
-      // Notify finance only
-      await fetch('/api/notify-ticket', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'nf_returned',
-          ticket: { ...ticket, id: ticket.id, status: 'resolved', timeResolved: new Date() },
-          user
-        }),
+        timeResolved: serverTimestamp(),
+        comments: systemComment(`${user.name} deu baixa na NF ${ticket.nfNumber || ''}. Chamado finalizado.`)
       });
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  const handleReturnNF = () => {
+  const handleCloseNF = () => {
     setConfirmModal({
       isOpen: true,
-      title: 'Confirmar Devolução',
-      message: 'Confirmar o retorno da Nota Fiscal e dos equipamentos? Isso finalizará o chamado.',
+      title: 'Dar Baixa na NF',
+      message: 'Os equipamentos foram devolvidos e recebidos pelo Suporte. Dar baixa na Nota Fiscal e finalizar o chamado?',
       variant: 'primary',
-      confirmText: 'Confirmar e Finalizar',
-      onConfirm: executeReturnNF
+      confirmText: 'Dar Baixa e Finalizar',
+      onConfirm: executeCloseNF
     });
   };
 
@@ -429,7 +503,9 @@ export default function TicketDetail({ ticket, user, onBack }) {
       canceled: 'bg-gray-100 text-gray-800',
       waiting_nf: 'bg-pink-100 text-pink-800',
       nf_emitted: 'bg-indigo-100 text-indigo-800',
-      separated_no_nf: 'bg-teal-100 text-teal-800'
+      separated_no_nf: 'bg-teal-100 text-teal-800',
+      waiting_return: 'bg-amber-100 text-amber-800',
+      waiting_nf_closure: 'bg-rose-100 text-rose-800'
     };
     const labels = {
       queue: 'Na Fila',
@@ -440,7 +516,9 @@ export default function TicketDetail({ ticket, user, onBack }) {
       canceled: 'Cancelado',
       waiting_nf: 'Emissão de NF',
       nf_emitted: 'NF Emitida / Em Trânsito',
-      separated_no_nf: 'Sem NF / Em Trânsito'
+      separated_no_nf: 'Sem NF / Em Trânsito',
+      waiting_return: 'Devolução Solicitada',
+      waiting_nf_closure: 'Aguardando Baixa da NF'
     };
     return <span className={`px-2 py-1 rounded-full text-xs font-semibold ${styles[s] || styles.queue}`}>{labels[s] || s}</span>;
   };
@@ -456,8 +534,12 @@ export default function TicketDetail({ ticket, user, onBack }) {
   // Finance Actions
   // waiting_nf -> can emit NF
   const showEmitNF = status === 'waiting_nf' && isFinance;
-  // nf_emitted -> can return NF, separated_no_nf -> any attendant can return
-  const showReturnNF = (status === 'nf_emitted' && isFinance) || (status === 'separated_no_nf' && canActOnTicket);
+  // nf_emitted / separated_no_nf -> o vendedor solicita a devolução
+  const showRequestReturn = isSeparationTicket && ['nf_emitted', 'separated_no_nf'].includes(status) && canRequestReturn;
+  // waiting_return -> o Suporte confirma o recebimento
+  const showConfirmReturn = isSeparationTicket && status === 'waiting_return' && canConfirmReturn;
+  // waiting_nf_closure -> o Financeiro dá baixa na NF
+  const showCloseNF = isSeparationTicket && status === 'waiting_nf_closure' && isFinance;
 
   return (
     <div className="flex flex-col h-full bg-white rounded-lg shadow-xl overflow-hidden">
@@ -529,6 +611,20 @@ export default function TicketDetail({ ticket, user, onBack }) {
                 <div><span className="block text-indigo-500 font-semibold mb-1">Data Emissão</span><span className="text-slate-800">{format(new Date(ticket.nfIssueDate), "dd/MM/yyyy")}</span></div>
                 <div><span className="block text-indigo-500 font-semibold mb-1">Prazo Devolução</span><span className="text-slate-800 font-bold text-red-600">{format(new Date(ticket.nfReturnDeadline), "dd/MM/yyyy")}</span></div>
               </div>
+            </div>
+          )}
+
+          {/* Devolução em andamento */}
+          {isSeparationTicket && status === 'waiting_return' && (
+            <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
+              <strong>Devolução solicitada{ticket.returnRequestedBy?.name ? ` por ${ticket.returnRequestedBy.name}` : ''}.</strong>{' '}
+              {canConfirmReturn ? 'Confira o recebimento dos equipamentos e confirme a devolução.' : 'Aguardando o Suporte confirmar o recebimento dos equipamentos.'}
+            </div>
+          )}
+          {isSeparationTicket && status === 'waiting_nf_closure' && (
+            <div className="mb-8 p-4 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-900">
+              <strong>Recebimento confirmado{ticket.returnConfirmedBy?.name ? ` por ${ticket.returnConfirmedBy.name}` : ''}.</strong>{' '}
+              {isFinance ? 'Dê baixa na Nota Fiscal para finalizar o chamado.' : 'Aguardando o Financeiro dar baixa na Nota Fiscal.'}
             </div>
           )}
 
@@ -647,9 +743,20 @@ export default function TicketDetail({ ticket, user, onBack }) {
               <FileText className="w-4 h-4" /> Registrar Emissão de NF
             </button>
           )}
-          {showReturnNF && (
-            <button onClick={handleReturnNF} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm">
-              <CheckCircle className="w-4 h-4" /> Registrar Devolução
+          {/* Devolução: vendedor solicita, Suporte confirma, Financeiro dá baixa */}
+          {showRequestReturn && (
+            <button onClick={handleRequestReturn} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors text-sm font-medium shadow-sm">
+              <Truck className="w-4 h-4" /> Solicitar Devolução
+            </button>
+          )}
+          {showConfirmReturn && (
+            <button onClick={handleConfirmReturn} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm">
+              <CheckCircle className="w-4 h-4" /> Confirmar Devolução
+            </button>
+          )}
+          {showCloseNF && (
+            <button onClick={handleCloseNF} disabled={loading} className="flex items-center gap-2 px-3 py-2 bg-rose-600 text-white rounded-md hover:bg-rose-700 transition-colors text-sm font-medium shadow-sm">
+              <FileText className="w-4 h-4" /> Dar Baixa na NF
             </button>
           )}
 

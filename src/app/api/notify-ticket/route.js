@@ -38,6 +38,9 @@ export async function POST(request) {
       waiting_user: 'Aguardando Retorno',
       waiting_nf: 'Aguardando Emissão de NF',
       nf_emitted: 'NF Emitida',
+      separated_no_nf: 'Sem NF / Em Trânsito',
+      waiting_return: 'Devolução Solicitada',
+      waiting_nf_closure: 'Aguardando Baixa da NF',
       resolved: 'Resolvido',
       canceled: 'Cancelado'
     };
@@ -223,6 +226,34 @@ export async function POST(request) {
         `, 'Acompanhar Chamado');
         break;
 
+      case 'return_requested':
+        subject = `↩️ Devolução Solicitada: ${ticket.subject}`;
+        emailHtml = baseTemplate('Devolução de Equipamentos Solicitada', `
+          <p style="color: #374151; font-size: 16px;">
+            O solicitante informou que os equipamentos da separação voltaram e pediu a devolução.
+          </p>
+          ${ticketInfo}
+          <div style="background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 4px solid #d97706;">
+            <p style="margin: 0;"><strong>Ação Necessária:</strong></p>
+            <p style="margin: 10px 0 0 0;">Confira o recebimento dos equipamentos e confirme a devolução no sistema.</p>
+          </div>
+        `, 'Acessar para Confirmar a Devolução');
+        break;
+
+      case 'return_confirmed':
+        subject = `🧾 Baixa de NF Pendente: ${ticket.subject}`;
+        emailHtml = baseTemplate('Dar Baixa na Nota Fiscal', `
+          <p style="color: #374151; font-size: 16px;">
+            O Suporte confirmou o recebimento dos equipamentos. A Nota Fiscal está aguardando a baixa.
+          </p>
+          ${ticketInfo}
+          <div style="background: #ffe4e6; padding: 15px; border-radius: 6px; border-left: 4px solid #e11d48;">
+            <p style="margin: 0;"><strong>NF Número:</strong> ${ticket.nfNumber || 'N/A'}</p>
+            <p style="margin: 10px 0 0 0;">Dê baixa na Nota Fiscal no sistema para finalizar o chamado.</p>
+          </div>
+        `, 'Acessar para Dar Baixa');
+        break;
+
       case 'nf_returned':
         subject = `↩️ NF Devolvida / Chamado Resolvido: ${ticket.subject}`;
         const returnDateVal = new Date().toLocaleDateString('pt-BR');
@@ -295,9 +326,19 @@ export async function POST(request) {
       recipientEmail = financeEmail;
     }
 
-    // NF Reminder (Aviso de 10 dias) vai para o criador do chamado (colaborador)
+    // Devolução solicitada vai para o SUPORTE (confirma o recebimento); com o recebimento confirmado, vai para o FINANCEIRO (dá baixa na NF)
+    if (type === 'return_requested') {
+      recipientEmail = supportEmail;
+    }
+    if (type === 'return_confirmed') {
+      recipientEmail = financeEmail;
+    }
+
+    // NF Reminder (Aviso de 10 dias) vai para quem deve o próximo passo: o criador (solicitar a devolução), o Suporte (confirmar) ou o Financeiro (dar baixa)
     if (type === 'nf_reminder') {
-      recipientEmail = ticket.createdBy?.email || financeEmail;
+      if (ticket.status === 'waiting_return') recipientEmail = supportEmail;
+      else if (ticket.status === 'waiting_nf_closure') recipientEmail = financeEmail;
+      else recipientEmail = ticket.createdBy?.email || financeEmail;
     }
 
     console.log('📧 [EMAIL API] Destinatário determinado:', recipientEmail);
